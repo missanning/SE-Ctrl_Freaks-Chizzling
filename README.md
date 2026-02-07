@@ -20,3 +20,8 @@ The Model–View–Controller (MVC) architectural style was chosen because it se
 
 **b. Modularity**
 - The system is divided into modules such as POS, Inventory, and Reports, allowing each part to be developed, tested, and improved separately.
+
+
+
+Constantino, Raxell Louis I. - Luhwiss (raxellcons26@gmail.com)
+Contreras
