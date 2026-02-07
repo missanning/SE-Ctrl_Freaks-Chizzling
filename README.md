@@ -6,8 +6,11 @@ The Model–View–Controller (MVC) architectural style was chosen because it se
 **2. High-Level Architecture Diagram**
 
    **a.Use Case Diagram**
+   
    ![Use Case Diagram](docs/uml/UseCaseChizzling.drawio.png)
+   
    **b.Class Diagram**
+   
    ![Class Diagram](docs/uml/ClassCaseChizzling.drawio.png)
 
 **3. Design Principles Applied (at least 2)**
