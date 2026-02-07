@@ -1,5 +1,5 @@
 1. Architectural Style
-
+The Model–View–Controller (MVC) architectural style was chosen because it separates the system into organized parts, making the system easier to develop and manage. Each component has a specific role, which helps reduce complexity and confusion during development.
 
 
 2. High-Level Architecture Diagram
