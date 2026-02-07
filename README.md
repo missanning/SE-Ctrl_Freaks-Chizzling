@@ -24,4 +24,5 @@ The Model–View–Controller (MVC) architectural style was chosen because it se
 
 
 Constantino, Raxell Louis I. - Luhwiss (raxellcons26@gmail.com)
-Contreras
+
+Contreras, David Jeremy N. - jaisemori (basura974@gmail.com)
