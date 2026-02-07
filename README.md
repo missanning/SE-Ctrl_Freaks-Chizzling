@@ -33,3 +33,5 @@ Contreras, David Jeremy N. - jaisemori (basura974@gmail.com)
 De Rojas, Liz Samantha - c21-0803-106-create (c21-0803-106@uphsl.edu.ph)
 
 Dela Rosa, Paule Kenneth - KennethTheCode (paulekennethd@gmail.com)
+
+Laxamana, Miguel D. - MiguelLaxamana (miguellaxamoney@gmail.com)
