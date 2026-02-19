@@ -4,7 +4,6 @@ def connect_db():
     conn = sqlite3.connect("sales_inventory.db")
     cursor = conn.cursor()
 
-    #Users table
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -13,7 +12,6 @@ def connect_db():
     )
     """)
 
-    # Products table
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS products (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -23,7 +21,6 @@ def connect_db():
     )
     """)
 
-    # Transactions table
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS transactions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -32,7 +29,6 @@ def connect_db():
     )
     """)
 
-    # Transaction items table
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS transaction_items (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -46,29 +42,28 @@ def connect_db():
     conn.commit()
     conn.close()
 
-    def insert_default_data():
-        conn = sqlite3.connect("sales_inventory.db")
-        cursor = conn.cursor()
 
-        # Insert Owner account
+def insert_default_data():  
+    conn = sqlite3.connect("sales_inventory.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    INSERT OR IGNORE INTO users (username, password)
+    VALUES ('owner', 'admin123')
+    """)
+
+    products = [
+        ("Coke", 20.0, 50),
+        ("Bread", 35.0, 30),
+        ("Milk", 50.0, 20),
+        ("Eggs", 8.0, 100)
+    ]
+
+    for product in products:
         cursor.execute("""
-        INSERT OR IGNORE INTO users (username, password)
-        VALUES ('owner', 'admin123')
-        """)
+        INSERT INTO products (name, price, stock)
+        VALUES (?, ?, ?)
+        """, product)
 
-        # Insert sample products
-        products = [
-            ("Coke", 20.0, 50),
-            ("Bread", 35.0, 30),
-            ("Milk", 50.0, 20),
-            ("Eggs", 8.0, 100)
-        ]
-
-        for product in products:
-            cursor.execute("""
-            INSERT INTO products (name, price, stock)
-            VALUES (?, ?, ?)
-            """, product)
-
-        conn.commit()
-        conn.close()
+    conn.commit()
+    conn.close()
