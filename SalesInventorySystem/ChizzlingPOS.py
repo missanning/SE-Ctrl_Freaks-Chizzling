@@ -5,6 +5,7 @@ from datetime import datetime
 import win32print
 import win32ui
 from PIL import Image, ImageDraw, ImageFont
+import os
 
 # Connect to database
 def connect_db():
@@ -181,6 +182,8 @@ class POS:
         date = cursor.fetchone()[0]
         conn.close()
 
+        os.makedirs("Receipts after Sale", exist_ok=True)
+
         receipt_window = tk.Toplevel(self.root)
         receipt_window.title("Receipt")
         receipt_window.geometry("320x450")
@@ -190,10 +193,10 @@ class POS:
 
         receipt = f"""{'='*32}
       CHIZZLING POS
-{'='*32}
+{'='*30}
 Date: {date}
 Transaction ID: {transaction_id}
-{'='*32}
+{'='*30}
 """
         for item in self.cart:
             receipt += f"{item[1]}\n  {item[2]} x {item[3]/item[2]:.2f} = {item[3]:.2f}\n"
@@ -205,6 +208,10 @@ Change: {change:.2f}
 {'='*30}
   Thank you for your purchase!
 {'='*30}"""
+
+        receipt_file = f"Receipts after Sale/receipt_{transaction_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        with open(receipt_file, 'w') as f:
+            f.write(receipt)
 
         receipt_text.insert(tk.END, receipt)
         receipt_text.config(state=tk.DISABLED)
