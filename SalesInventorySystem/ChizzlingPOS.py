@@ -6,6 +6,40 @@ import sqlite3
 def connect_db():
     return sqlite3.connect("sales_inventory.db")
 
+class LoginWindow:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Login - Chizzling POS")
+        self.root.geometry("300x150")
+        
+        tk.Label(root, text="Username:").grid(row=0, column=0, padx=10, pady=10)
+        self.username_entry = tk.Entry(root)
+        self.username_entry.grid(row=0, column=1, padx=10, pady=10)
+        
+        tk.Label(root, text="Password:").grid(row=1, column=0, padx=10, pady=10)
+        self.password_entry = tk.Entry(root, show="*")
+        self.password_entry.grid(row=1, column=1, padx=10, pady=10)
+        
+        tk.Button(root, text="Login", command=self.login).grid(row=2, column=0, columnspan=2, pady=10)
+    
+    def login(self):
+        username = self.username_entry.get()
+        password = self.password_entry.get()
+        
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users WHERE username=? AND password=?", (username, password))
+        user = cursor.fetchone()
+        conn.close()
+        
+        if user:
+            self.root.destroy()
+            root = tk.Tk()
+            app = POS(root)
+            root.mainloop()
+        else:
+            messagebox.showerror("Error", "Invalid credentials")
+
 class POS:
     def __init__(self, root):
         self.root = root
@@ -136,5 +170,5 @@ class POS:
 
 if __name__ == "__main__":
     root = tk.Tk()
-    app = POS(root)
+    app = LoginWindow(root)
     root.mainloop()
