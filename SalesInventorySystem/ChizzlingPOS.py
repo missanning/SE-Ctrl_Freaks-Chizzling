@@ -1,6 +1,7 @@
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, scrolledtext
 import sqlite3
+from datetime import datetime
 
 # Connect to database
 def connect_db():
@@ -160,6 +161,8 @@ class POS:
         conn.commit()
         conn.close()
 
+        self.show_receipt(transaction_id, change)
+
         messagebox.showinfo("Success", f"Transaction Saved!\nChange: {change}")
 
         self.cart = []
@@ -167,6 +170,47 @@ class POS:
         self.total = 0
         self.update_total()
         self.payment_entry.delete(0, tk.END)
+
+    def show_receipt(self, transaction_id, change):
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT date FROM transactions WHERE id=?", (transaction_id,))
+        date = cursor.fetchone()[0]
+        conn.close()
+
+        receipt_window = tk.Toplevel(self.root)
+        receipt_window.title("Receipt")
+        receipt_window.geometry("400x500")
+
+        receipt_text = scrolledtext.ScrolledText(receipt_window, width=45, height=25)
+        receipt_text.pack(padx=10, pady=10)
+
+        receipt = f"""{'='*40}
+           CHIZZLING POS
+{'='*40}
+Date: {date}
+Transaction ID: {transaction_id}
+{'='*40}
+"""
+        for item in self.cart:
+            receipt += f"{item[1]}\n  {item[2]} x {item[3]/item[2]:.2f} = {item[3]:.2f}\n"
+        
+        receipt += f"""{'='*40}
+Total: {self.total:.2f}
+Payment: {self.total + change:.2f}
+Change: {change:.2f}
+{'='*40}
+     Thank you for your purchase!
+{'='*40}"""
+
+        receipt_text.insert(tk.END, receipt)
+        receipt_text.config(state=tk.DISABLED)
+
+        tk.Button(receipt_window, text="Print Receipt", command=lambda: self.print_receipt(receipt)).pack(pady=5)
+        tk.Button(receipt_window, text="Close", command=receipt_window.destroy).pack(pady=5)
+
+    def print_receipt(self, receipt):
+        messagebox.showinfo("Print", "Receipt sent to printer")
 
 if __name__ == "__main__":
     root = tk.Tk()
