@@ -26,8 +26,8 @@ Change: {change:.2f}
     return receipt
 
 def save_receipt(receipt, transaction_id):
-    os.makedirs("SalesInventorySystem/Receipts after Sale", exist_ok=True)
-    receipt_file = f"SalesInventorySystem/Receipts after Sale/receipt_{transaction_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+    os.makedirs("Receipts after Sale", exist_ok=True)
+    receipt_file = f"Receipts after Sale/receipt_{transaction_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
     with open(receipt_file, 'w') as f:
         f.write(receipt)
 
