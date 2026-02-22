@@ -2,6 +2,9 @@ import tkinter as tk
 from tkinter import messagebox, scrolledtext
 import sqlite3
 from datetime import datetime
+import win32print
+import win32ui
+from PIL import Image, ImageDraw, ImageFont
 
 # Connect to database
 def connect_db():
@@ -180,28 +183,28 @@ class POS:
 
         receipt_window = tk.Toplevel(self.root)
         receipt_window.title("Receipt")
-        receipt_window.geometry("400x500")
+        receipt_window.geometry("320x450")
 
-        receipt_text = scrolledtext.ScrolledText(receipt_window, width=45, height=25)
+        receipt_text = scrolledtext.ScrolledText(receipt_window, width=32, height=22, font=('Courier', 9))
         receipt_text.pack(padx=10, pady=10)
 
-        receipt = f"""{'='*40}
-           CHIZZLING POS
-{'='*40}
+        receipt = f"""{'='*32}
+      CHIZZLING POS
+{'='*32}
 Date: {date}
 Transaction ID: {transaction_id}
-{'='*40}
+{'='*32}
 """
         for item in self.cart:
             receipt += f"{item[1]}\n  {item[2]} x {item[3]/item[2]:.2f} = {item[3]:.2f}\n"
         
-        receipt += f"""{'='*40}
+        receipt += f"""{'='*30}
 Total: {self.total:.2f}
 Payment: {self.total + change:.2f}
 Change: {change:.2f}
-{'='*40}
-     Thank you for your purchase!
-{'='*40}"""
+{'='*30}
+  Thank you for your purchase!
+{'='*30}"""
 
         receipt_text.insert(tk.END, receipt)
         receipt_text.config(state=tk.DISABLED)
@@ -210,7 +213,30 @@ Change: {change:.2f}
         tk.Button(receipt_window, text="Close", command=receipt_window.destroy).pack(pady=5)
 
     def print_receipt(self, receipt):
-        messagebox.showinfo("Print", "Receipt sent to printer")
+        try:
+            printer_name = win32print.GetDefaultPrinter()
+            hprinter = win32print.OpenPrinter(printer_name)
+            
+            hdc = win32ui.CreateDC()
+            hdc.CreatePrinterDC(printer_name)
+            hdc.StartDoc("Receipt")
+            hdc.StartPage()
+            
+            font = win32ui.CreateFont({"name": "Courier New", "height": 40})
+            hdc.SelectObject(font)
+            
+            y = 100
+            for line in receipt.split('\n'):
+                hdc.TextOut(100, y, line)
+                y += 50
+            
+            hdc.EndPage()
+            hdc.EndDoc()
+            win32print.ClosePrinter(hprinter)
+            
+            messagebox.showinfo("Success", "Receipt sent to printer")
+        except Exception as e:
+            messagebox.showerror("Print Error", f"Failed to print: {str(e)}")
 
 if __name__ == "__main__":
     root = tk.Tk()
