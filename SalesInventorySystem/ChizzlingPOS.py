@@ -1,11 +1,7 @@
 import tkinter as tk
-from tkinter import messagebox, scrolledtext
+from tkinter import messagebox
 import sqlite3
-from datetime import datetime
-import win32print
-import win32ui
-from PIL import Image, ImageDraw, ImageFont
-import os
+from receipt_module import show_receipt_window
 
 # Connect to database
 def connect_db():
@@ -162,10 +158,14 @@ class POS:
             
             cursor.execute("UPDATE products SET stock = stock - ? WHERE id = ?",
                            (item[2], item[0]))
+        
+        cursor.execute("SELECT date FROM transactions WHERE id=?", (transaction_id,))
+        date = cursor.fetchone()[0]
+        
         conn.commit()
         conn.close()
 
-        self.show_receipt(transaction_id, change)
+        show_receipt_window(self.root, transaction_id, date, self.cart, self.total, change)
 
         messagebox.showinfo("Success", f"Transaction Saved!\nChange: {change}")
 
@@ -174,76 +174,6 @@ class POS:
         self.total = 0
         self.update_total()
         self.payment_entry.delete(0, tk.END)
-
-    def show_receipt(self, transaction_id, change):
-        conn = connect_db()
-        cursor = conn.cursor()
-        cursor.execute("SELECT date FROM transactions WHERE id=?", (transaction_id,))
-        date = cursor.fetchone()[0]
-        conn.close()
-
-        os.makedirs("SalesInventorySystem/Receipts after Sale", exist_ok=True)
-
-        receipt_window = tk.Toplevel(self.root)
-        receipt_window.title("Receipt")
-        receipt_window.geometry("320x450")
-
-        receipt_text = scrolledtext.ScrolledText(receipt_window, width=32, height=22, font=('Courier', 9))
-        receipt_text.pack(padx=10, pady=10)
-
-        receipt = f"""{'='*32}
-      CHIZZLING POS
-{'='*30}
-Date: {date}
-Transaction ID: {transaction_id}
-{'='*30}
-"""
-        for item in self.cart:
-            receipt += f"{item[1]}\n  {item[2]} x {item[3]/item[2]:.2f} = {item[3]:.2f}\n"
-        
-        receipt += f"""{'='*30}
-Total: {self.total:.2f}
-Payment: {self.total + change:.2f}
-Change: {change:.2f}
-{'='*30}
-  Thank you for your purchase!
-{'='*30}"""
-
-        receipt_file = f"SalesInventorySystem/Receipts after Sale/receipt_{transaction_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-        with open(receipt_file, 'w') as f:
-            f.write(receipt)
-
-        receipt_text.insert(tk.END, receipt)
-        receipt_text.config(state=tk.DISABLED)
-
-        tk.Button(receipt_window, text="Print Receipt", command=lambda: self.print_receipt(receipt)).pack(pady=5)
-        tk.Button(receipt_window, text="Close", command=receipt_window.destroy).pack(pady=5)
-
-    def print_receipt(self, receipt):
-        try:
-            printer_name = win32print.GetDefaultPrinter()
-            hprinter = win32print.OpenPrinter(printer_name)
-            
-            hdc = win32ui.CreateDC()
-            hdc.CreatePrinterDC(printer_name)
-            hdc.StartDoc("Receipt")
-            hdc.StartPage()
-            
-            font = win32ui.CreateFont({"name": "Courier New", "height": 40})
-            hdc.SelectObject(font)
-            
-            y = 100
-            for line in receipt.split('\n'):
-                hdc.TextOut(100, y, line)
-                y += 50
-            
-            hdc.EndPage()
-            hdc.EndDoc()
-            win32print.ClosePrinter(hprinter)
-            
-            messagebox.showinfo("Success", "Receipt sent to printer")
-        except Exception as e:
-            messagebox.showerror("Print Error", f"Failed to print: {str(e)}")
 
 if __name__ == "__main__":
     root = tk.Tk()
