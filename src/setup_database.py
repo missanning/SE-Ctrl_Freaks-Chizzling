@@ -1,7 +1,9 @@
 import sqlite3
 
 def connect_db():
-    conn = sqlite3.connect("sales_inventory.db")
+    import os
+    db_path = os.path.join(os.path.dirname(__file__), "sales_inventory.db")
+    conn = sqlite3.connect(db_path)
     return conn
 
 def create_tables():
@@ -109,9 +111,13 @@ def insert_default_data():
         ("Sizzling Liempo (Rice Meal)", 109, "Meals", 100),
 
         # DRINKS
-        ("Iced Tea", 40, "Drinks", 100),
-        ("Soda", 30, "Drinks", 100),
-        ("Bottled Water", 20, "Drinks", 100),
+        ("Water", 15, "Drinks", 100),
+        ("Iced Tea (1 Pitcher)", 50, "Drinks", 100),
+        ("Coca Cola", 50, "Drinks", 100),
+        ("Pepsi", 50, "Drinks", 100),
+        ("Royal", 50, "Drinks", 100),
+        ("Sprite", 50, "Drinks", 100),
+        ("Mountain Dew", 50, "Drinks", 100),
 
         # ALCOHOL
         ("Red Wine", 250, "Alcohol", 50),
