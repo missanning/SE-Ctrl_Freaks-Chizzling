@@ -24,6 +24,7 @@ def create_tables():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT,
         price REAL,
+        category TEXT,
         stock INTEGER
     )
     """)
@@ -66,52 +67,74 @@ def insert_default_data():
     products = [
 
         # SNACKS
-        ("Nachos", 80, 100),
-        ("Shawarma Rice", 80, 100),
+        ("Nachos", 80, "Snacks", 100),
+        ("Shawarma Rice", 80, "Snacks", 100),
 
         # FRENCH FRIES
-        ("Fries - Cheese", 50, 100),
-        ("Fries - Barbeque", 50, 100),
-        ("Fries - Sour and Cream", 50, 100),
+        ("Fries - Cheese", 50, "Snacks", 100),
+        ("Fries - Barbeque", 50, "Snacks", 100),
+        ("Fries - Sour and Cream", 50, "Snacks", 100),
 
         # TAKOYAKI
-        ("Takoyaki - Cheese (5pcs)", 45, 100),
-        ("Takoyaki - Ham and Cheese (5pcs)", 50, 100),
-        ("Takoyaki - Crab (5pcs)", 50, 100),
-        ("Takoyaki - Overload (7pcs)", 80, 100),
+        ("Takoyaki - Cheese (5pcs)", 45, "Snacks", 100),
+        ("Takoyaki - Ham and Cheese (5pcs)", 50, "Snacks", 100),
+        ("Takoyaki - Crab (5pcs)", 50, "Snacks", 100),
+        ("Takoyaki - Overload (7pcs)", 80, "Snacks", 100),
 
         # CHICKEN TENDERS RICE
-        ("Chicken Tenders - Sour and Cream", 60, 100),
-        ("Chicken Tenders - Barbeque", 60, 100),
-        ("Chicken Tenders - Cheese", 60, 100),
+        ("Chicken Tenders - Sour and Cream", 60, "Meals", 100),
+        ("Chicken Tenders - Barbeque", 60, "Meals", 100),
+        ("Chicken Tenders - Cheese", 60, "Meals", 100),
 
         # BUNDLE MEALS
-        ("Sizzling Tofu", 189, 100),
-        ("Sizzling Liempo", 199, 100),
-        ("Sizzling Sisig", 199, 100),
+        ("Sizzling Tofu", 189, "Meals", 100),
+        ("Sizzling Liempo", 199, "Meals", 100),
+        ("Sizzling Sisig", 199, "Meals", 100),
 
         # COMBO BUNDLE
-        ("Sisig and Liempo", 199, 100),
-        ("Sisig and Tofu", 199, 100),
-        ("Liempo and Tofu", 199, 100),
+        ("Sisig and Liempo", 199, "Meals", 100),
+        ("Sisig and Tofu", 199, "Meals", 100),
+        ("Liempo and Tofu", 199, "Meals", 100),
 
         # SILOG
-        ("Tocilog", 60, 100),
-        ("Hotsilog", 60, 100),
-        ("Chicksilog", 99, 100),
-        ("Porksilog", 99, 100),
-        ("Sisig Silog", 99, 100),
+        ("Tocilog", 60, "Meals", 100),
+        ("Hotsilog", 60, "Meals", 100),
+        ("Chicksilog", 99, "Meals", 100),
+        ("Porksilog", 99, "Meals", 100),
+        ("Sisig Silog", 99, "Meals", 100),
 
         # SIZZLING RICE MEALS
-        ("Sizzling Sisig (Rice Meal)", 109, 100),
-        ("Sizzling Tofu (Rice Meal)", 109, 100),
-        ("Sizzling Liempo (Rice Meal)", 109, 100),
+        ("Sizzling Sisig (Rice Meal)", 109, "Meals", 100),
+        ("Sizzling Tofu (Rice Meal)", 109, "Meals", 100),
+        ("Sizzling Liempo (Rice Meal)", 109, "Meals", 100),
+
+        # DRINKS
+        ("Iced Tea", 40, "Drinks", 100),
+        ("Soda", 30, "Drinks", 100),
+        ("Bottled Water", 20, "Drinks", 100),
+
+        # ALCOHOL
+        ("Red Wine", 250, "Alcohol", 50),
+        ("Beer (Bottle)", 120, "Alcohol", 50),
     ]
 
-    cursor.executemany(
-        "INSERT OR IGNORE INTO products (name, price, stock) VALUES (?, ?, ?)",
-        products
-    )
+    # Ensure category column exists before inserting (supports legacy DBs)
+    cursor.execute("PRAGMA table_info(products)")
+    columns = [row[1] for row in cursor.fetchall()]
+    has_category = "category" in columns
+    if not has_category:
+        cursor.execute("ALTER TABLE products ADD COLUMN category TEXT DEFAULT 'All'")
+        conn.commit()
+        has_category = True
+
+    if has_category:
+        insert_query = "INSERT OR IGNORE INTO products (name, price, category, stock) VALUES (?, ?, ?, ?)"
+        insert_data = products
+    else:
+        insert_query = "INSERT OR IGNORE INTO products (name, price, stock) VALUES (?, ?, ?)"
+        insert_data = [(name, price, stock) for name, price, category, stock in products]
+
+    cursor.executemany(insert_query, insert_data)
 
     conn.commit()
     conn.close()
