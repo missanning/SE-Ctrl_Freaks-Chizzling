@@ -354,11 +354,23 @@ class POS:
         self.cart_canvas.create_window((0, 0), window=self.cart_items_frame, anchor="nw")
         self.cart_canvas.configure(yscrollcommand=scrollbar.set)
         
-        # Enable mouse wheel scrolling
+        # Enable mouse wheel scrolling only when hovering over cart canvas
         def _on_mousewheel(event):
-            self.cart_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+            # Only scroll if content is larger than visible area
+            if self.cart_canvas.bbox("all"):
+                bbox = self.cart_canvas.bbox("all")
+                canvas_height = self.cart_canvas.winfo_height()
+                if bbox[3] > canvas_height:
+                    self.cart_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
         
-        self.cart_canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        def _bind_mousewheel(event):
+            self.cart_canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        
+        def _unbind_mousewheel(event):
+            self.cart_canvas.unbind_all("<MouseWheel>")
+        
+        self.cart_canvas.bind("<Enter>", _bind_mousewheel)
+        self.cart_canvas.bind("<Leave>", _unbind_mousewheel)
         
         self.cart_canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
