@@ -13,7 +13,9 @@ except ImportError:
 
 # Connect to database
 def connect_db():
-    return sqlite3.connect("sales_inventory.db")
+    import os
+    db_path = os.path.join(os.path.dirname(__file__), "sales_inventory.db")
+    return sqlite3.connect(db_path)
 
 class LoginWindow:
     def __init__(self, root):
@@ -82,7 +84,7 @@ class POS:
 
         # Load header image. Use PIL (ImageTk) if available so the image can scale to fill the header.
         if Image is not None and ImageTk is not None:
-            self.header_pil = Image.open("src/HEADER.png")
+            self.header_pil = Image.open("HEADER.png")
             self.header_img = ImageTk.PhotoImage(self.header_pil)
 
             header_label = tk.Label(header, image=self.header_img, borderwidth=0, relief="flat")
@@ -99,7 +101,7 @@ class POS:
             header.bind("<Configure>", _resize_header)
         else:
             # Fall back to Tkinter PhotoImage (fixed size)
-            self.header_img = tk.PhotoImage(file="src/HEADER.png")
+            self.header_img = tk.PhotoImage(file="HEADER.png")
             header_label = tk.Label(header, image=self.header_img, borderwidth=0, relief="solid")
             header_label.pack(fill="both", expand=True)
             
@@ -232,17 +234,17 @@ class POS:
                   relief="raised").pack(fill="x", padx=10, pady=(0, 10))
 
         # --- Load images --- NOT YET ACTIVATED DUE TO THE DATABASE NOT HAVINF CATEGORY FIELD YET
-        self.meals_img_inactive = tk.PhotoImage(file="src/MEALS1.png")
-        self.snacks_img_inactive = tk.PhotoImage(file="src/SNACKS1.png")
-        self.drinks_img_inactive = tk.PhotoImage(file="src/DRINKS1.png")
-        self.alcohol_img_inactive = tk.PhotoImage(file="src/ALCOHOL1.png")
-        self.all_img_inactive = tk.PhotoImage(file="src/ALL1.png")
+        self.meals_img_inactive = tk.PhotoImage(file="MEALS1.png")
+        self.snacks_img_inactive = tk.PhotoImage(file="SNACKS1.png")
+        self.drinks_img_inactive = tk.PhotoImage(file="DRINKS1.png")
+        self.alcohol_img_inactive = tk.PhotoImage(file="ALCOHOL1.png")
+        self.all_img_inactive = tk.PhotoImage(file="ALL1.png")
 
-        self.meals_img_active = tk.PhotoImage(file="src/MEALS.png")
-        self.snacks_img_active = tk.PhotoImage(file="src/SNACKS.png")
-        self.drinks_img_active = tk.PhotoImage(file="src/DRINKS.png")
-        self.alcohol_img_active = tk.PhotoImage(file="src/ALCOHOL.png")
-        self.all_img_active = tk.PhotoImage(file="src/ALL.png")
+        self.meals_img_active = tk.PhotoImage(file="MEALS.png")
+        self.snacks_img_active = tk.PhotoImage(file="SNACKS.png")
+        self.drinks_img_active = tk.PhotoImage(file="DRINKS.png")
+        self.alcohol_img_active = tk.PhotoImage(file="ALCOHOL.png")
+        self.all_img_active = tk.PhotoImage(file="ALL.png")
 
         # --- Category Frame ---
         category_frame = tk.Frame(self.root, bg="#FAF3E1")
@@ -296,6 +298,21 @@ class POS:
         all_label.bind("<Button-1>", lambda e: set_active_category("all"))
         self.category_labels["all"] = all_label
 
+        # --- Cancel Button ---
+        cancel_btn = tk.Button(
+            category_frame,
+            text="CANCEL ORDER",
+            command=self.cancel_order,
+            bg="#DC3545",
+            fg="white",
+            activebackground="#C82333",
+            activeforeground="white",
+            relief="raised",
+            cursor="hand2",
+            width=15
+        )
+        cancel_btn.grid(row=0, column=5, padx=10)
+
         # Default to showing all products
         set_active_category("all")
 
@@ -315,9 +332,30 @@ class POS:
         tk.Label(self.cart_frame, text="CHECKOUT LIST", font=("Arial", 10, "bold"),
                 bg="#FFFFFF").grid(row=0, column=0, columnspan=3, padx=100, pady=5, sticky="ew")
 
-        # Cart list (rows with + / - buttons in-line)
-        self.cart_items_frame = tk.Frame(self.cart_frame, bg="#FFFFFF")
-        self.cart_items_frame.grid(row=1, column=0, columnspan=3, sticky="nsew", padx=10, pady=(0, 5))
+        # Create a canvas with scrollbar for cart items
+        canvas_container = tk.Frame(self.cart_frame, bg="#FFFFFF")
+        canvas_container.grid(row=1, column=0, columnspan=3, sticky="nsew", padx=10, pady=(0, 5))
+        
+        self.cart_canvas = tk.Canvas(canvas_container, bg="#FFFFFF", highlightthickness=0)
+        scrollbar = tk.Scrollbar(canvas_container, orient="vertical", command=self.cart_canvas.yview)
+        self.cart_items_frame = tk.Frame(self.cart_canvas, bg="#FFFFFF")
+        
+        self.cart_items_frame.bind(
+            "<Configure>",
+            lambda e: self.cart_canvas.configure(scrollregion=self.cart_canvas.bbox("all"))
+        )
+        
+        self.cart_canvas.create_window((0, 0), window=self.cart_items_frame, anchor="nw")
+        self.cart_canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # Enable mouse wheel scrolling
+        def _on_mousewheel(event):
+            self.cart_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        
+        self.cart_canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        
+        self.cart_canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
 
         # Make the item rows align with the header columns
         for col, weight in enumerate((4, 1, 1, 1, 2)):
@@ -354,6 +392,18 @@ class POS:
         root = tk.Tk()
         app = LoginWindow(root)
         root.mainloop()
+
+    def cancel_order(self):
+        if not self.cart:
+            messagebox.showinfo("Info", "Cart is already empty")
+            return
+        
+        response = messagebox.askyesno("Cancel Order", "Are you sure you want to cancel all items in the cart?")
+        if response:
+            self.cart = []
+            self.update_cart()
+            self.payment_entry.delete(0, tk.END)
+            messagebox.showinfo("Success", "All items have been removed from cart")
 
     def load_products(self, category=None):
         conn = connect_db()
