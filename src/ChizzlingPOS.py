@@ -17,6 +17,12 @@ def connect_db():
     db_path = os.path.join(os.path.dirname(__file__), "sales_inventory.db")
     return sqlite3.connect(db_path)
 
+def get_asset_path(filename):
+    import os
+    # Get the parent directory of src (project root)
+    project_root = os.path.dirname(os.path.dirname(__file__))
+    return os.path.join(project_root, "assets", filename)
+
 class LoginWindow:
     def __init__(self, root):
         self.root = root
@@ -84,7 +90,7 @@ class POS:
 
         # Load header image. Use PIL (ImageTk) if available so the image can scale to fill the header.
         if Image is not None and ImageTk is not None:
-            self.header_pil = Image.open("HEADER.png")
+            self.header_pil = Image.open(get_asset_path("HEADER.png"))
             self.header_img = ImageTk.PhotoImage(self.header_pil)
 
             header_label = tk.Label(header, image=self.header_img, borderwidth=0, relief="flat")
@@ -101,7 +107,7 @@ class POS:
             header.bind("<Configure>", _resize_header)
         else:
             # Fall back to Tkinter PhotoImage (fixed size)
-            self.header_img = tk.PhotoImage(file="HEADER.png")
+            self.header_img = tk.PhotoImage(file=get_asset_path("HEADER.png"))
             header_label = tk.Label(header, image=self.header_img, borderwidth=0, relief="solid")
             header_label.pack(fill="both", expand=True)
             
@@ -234,17 +240,17 @@ class POS:
                   relief="raised").pack(fill="x", padx=10, pady=(0, 10))
 
         # --- Load images --- NOT YET ACTIVATED DUE TO THE DATABASE NOT HAVINF CATEGORY FIELD YET
-        self.meals_img_inactive = tk.PhotoImage(file="MEALS1.png")
-        self.snacks_img_inactive = tk.PhotoImage(file="SNACKS1.png")
-        self.drinks_img_inactive = tk.PhotoImage(file="DRINKS1.png")
-        self.alcohol_img_inactive = tk.PhotoImage(file="ALCOHOL1.png")
-        self.all_img_inactive = tk.PhotoImage(file="ALL1.png")
+        self.meals_img_inactive = tk.PhotoImage(file=get_asset_path("MEALS1.png"))
+        self.snacks_img_inactive = tk.PhotoImage(file=get_asset_path("SNACKS1.png"))
+        self.drinks_img_inactive = tk.PhotoImage(file=get_asset_path("DRINKS1.png"))
+        self.alcohol_img_inactive = tk.PhotoImage(file=get_asset_path("ALCOHOL1.png"))
+        self.all_img_inactive = tk.PhotoImage(file=get_asset_path("ALL1.png"))
 
-        self.meals_img_active = tk.PhotoImage(file="MEALS.png")
-        self.snacks_img_active = tk.PhotoImage(file="SNACKS.png")
-        self.drinks_img_active = tk.PhotoImage(file="DRINKS.png")
-        self.alcohol_img_active = tk.PhotoImage(file="ALCOHOL.png")
-        self.all_img_active = tk.PhotoImage(file="ALL.png")
+        self.meals_img_active = tk.PhotoImage(file=get_asset_path("MEALS.png"))
+        self.snacks_img_active = tk.PhotoImage(file=get_asset_path("SNACKS.png"))
+        self.drinks_img_active = tk.PhotoImage(file=get_asset_path("DRINKS.png"))
+        self.alcohol_img_active = tk.PhotoImage(file=get_asset_path("ALCOHOL.png"))
+        self.all_img_active = tk.PhotoImage(file=get_asset_path("ALL.png"))
 
         # --- Category Frame ---
         category_frame = tk.Frame(self.root, bg="#FAF3E1")
