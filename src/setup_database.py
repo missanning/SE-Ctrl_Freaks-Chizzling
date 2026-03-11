@@ -65,6 +65,8 @@ def insert_default_data():
     # Insert default user
     cursor.execute("INSERT OR IGNORE INTO users (username, password, role) VALUES (?, ?, ?)",
                    ("cashier", "1234", "cashier"))
+    cursor.execute("INSERT OR IGNORE INTO users (username, password, role) VALUES (?, ?, ?)",
+                   ("owner", "admin", "owner"))
 
     products = [
 
