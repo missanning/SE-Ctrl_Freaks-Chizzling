@@ -137,54 +137,7 @@ class POS:
         for product in filtered:
             self.product_listbox.insert(tk.END, f"{product[1]} - {product[2]}")
 
-    def add_new_item(self):
-        add_window = tk.Toplevel(self.root)
-        add_window.title("Add New Product")
-        add_window.geometry("300x250")
 
-        tk.Label(add_window, text="Product Name").pack()
-        name_entry = tk.Entry(add_window)
-        name_entry.pack()
-
-        tk.Label(add_window, text="Price").pack()
-        price_entry = tk.Entry(add_window)
-        price_entry.pack()
-
-        tk.Label(add_window, text="Category").pack()
-        category_entry = tk.Entry(add_window)
-        category_entry.pack()
-
-        tk.Label(add_window, text="Stock").pack()
-        stock_entry = tk.Entry(add_window)
-        stock_entry.pack()
-
-        def save_product():
-            name = name_entry.get()
-            price = price_entry.get()
-            category = category_entry.get()
-            stock = stock_entry.get()
-
-            conn = connect_db()
-            cursor = conn.cursor()
-
-            cursor.execute(
-                "INSERT INTO products (name, price, category, stock) VALUES (?, ?, ?, ?)",
-                (name, price, category, stock)
-            )
-
-            conn.commit()
-            conn.close()
-
-            messagebox.showinfo("Success", "Product added successfully")
-
-            add_window.destroy()
-
-            # reload product list
-            self.product_listbox.delete(0, tk.END)
-            self.load_products()
-
-        tk.Button(add_window, text="Save Product", command=save_product).pack(pady=10)
-        
     def create_widgets(self):
         # Product List (left)
         product_frame = tk.Frame(self.root, bg="#FAF3E1", bd=1, relief="solid")
@@ -193,20 +146,6 @@ class POS:
         # --- Header inside product frame ---
         header_frame = tk.Frame(product_frame, bg="#FAF3E1")
         header_frame.pack(fill="x", padx=5, pady=5)
-
-        # Add New Item (clickable)
-        add_item_label = tk.Label(
-            header_frame,
-            text="➕ Add New Item",
-            fg="#333333",  
-            cursor="hand2",
-            bg="#FAF3E1",
-            font=("Arial", 10, "underline")
-        )
-        add_item_label.pack(side="left")
-        add_item_label.bind("<Button-1>", lambda e: self.add_new_item())
-        add_item_label.bind("<Enter>", lambda e: add_item_label.config(fg="#FF8C00"))
-        add_item_label.bind("<Leave>", lambda e: add_item_label.config(fg="#333333"))
 
         # Search bar container
         search_frame = tk.Frame(header_frame, bg="#E9EAE2", bd=1, relief="flat")
