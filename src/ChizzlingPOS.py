@@ -50,9 +50,17 @@ class LoginWindow:
         conn.close()
         
         if user:
+            user_role = user[3]  # role is the 4th column
             self.root.destroy()
             root = tk.Tk()
-            app = POS(root)
+            
+            # If owner, show dashboard; if cashier, show POS
+            if user_role and user_role.lower() == "owner":
+                from dashboard import Dashboard
+                app = Dashboard(root)
+            else:
+                app = POS(root)
+            
             root.mainloop()
         else:
             messagebox.showerror("Error", "Invalid credentials")
@@ -487,8 +495,11 @@ class POS:
         conn = connect_db()
         cursor = conn.cursor()
 
-        cursor.execute("INSERT INTO transactions (total, payment, change) VALUES (?, ?, ?)",
-                       (self.total, payment, change))
+        from datetime import datetime
+        current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        cursor.execute("INSERT INTO transactions (total, payment, change, date) VALUES (?, ?, ?, ?)",
+                       (self.total, payment, change, current_datetime))
         transaction_id = cursor.lastrowid
 
         for item in self.cart:
