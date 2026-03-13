@@ -24,11 +24,26 @@ class MainApp:
         self.label_password = tk.Label(root, text="Password:")
         self.label_password.pack(pady=5)
 
-        self.entry_password = tk.Entry(root)
-        self.entry_password.pack(pady=5)
+        password_frame = tk.Frame(root)
+        password_frame.pack(pady=5)
+
+        self.entry_password = tk.Entry(password_frame, show="*")
+        self.entry_password.pack(side=tk.LEFT)
+
+        self.show_password = False
+        self.toggle_button = tk.Button(password_frame, text="👁", width=3, command=self.toggle_password_visibility)
+        self.toggle_button.pack(side=tk.LEFT, padx=5)
 
         self.login_button = tk.Button(root, text="Login", width=18, command=self.login)
         self.login_button.pack(pady=10)
+    
+    def toggle_password_visibility(self):
+        if self.show_password:
+            self.entry_password.config(show="*")
+            self.show_password = False
+        else:
+            self.entry_password.config(show="")
+            self.show_password = True
     
     def login(self):
         username = self.entry_username.get()
