@@ -3,6 +3,7 @@ from tkinter import messagebox
 import sqlite3
 from tkinter import PhotoImage
 from tkinter import ttk
+from receipt_module import show_receipt_window
 
 # For responsive image scaling (optional; falls back to Tkinter PhotoImage if missing)
 try:
@@ -468,6 +469,10 @@ class POS:
         conn.close()
 
         messagebox.showinfo("Success", f"Transaction Saved!\nChange: {change:.2f}")
+
+        # Generate receipt
+        cart_data = [(item['id'], item['name'], item['qty'], item['price'] * item['qty']) for item in self.cart]
+        show_receipt_window(self.root, transaction_id, current_datetime, cart_data, self.total, change)
 
         # Reset cart
         self.cart = []
