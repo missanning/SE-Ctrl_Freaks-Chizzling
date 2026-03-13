@@ -27,9 +27,17 @@ def create_tables():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT UNIQUE,
         price REAL,
-        stock INTEGER
+        stock INTEGER,
+        category TEXT
     )
     """)
+
+    # Ensure the products table has a category column (for existing databases)
+    cursor.execute("PRAGMA table_info(products)")
+    columns = [row[1] for row in cursor.fetchall()]
+    if "category" not in columns:
+        cursor.execute("ALTER TABLE products ADD COLUMN category TEXT")
+        cursor.execute("UPDATE products SET category = 'unknown' WHERE category IS NULL")
 
     # TRANSACTIONS TABLE
     cursor.execute("""
@@ -99,43 +107,43 @@ def insert_default_data():
     # PRODUCTS
     products = [
 
-        ("Nachos", 80, 100),
-        ("Shawarma Rice", 80, 100),
+        ("Nachos", 80, 100, "snacks"),
+        ("Shawarma Rice", 80, 100, "meals"),
 
-        ("Fries - Cheese", 50, 100),
-        ("Fries - Barbeque", 50, 100),
-        ("Fries - Sour and Cream", 50, 100),
+        ("Fries - Cheese", 50, 100, "snacks"),
+        ("Fries - Barbeque", 50, 100, "snacks"),
+        ("Fries - Sour and Cream", 50, 100, "snacks"),
 
-        ("Takoyaki - Cheese (5pcs)", 45, 100),
-        ("Takoyaki - Ham and Cheese (5pcs)", 50, 100),
-        ("Takoyaki - Crab (5pcs)", 50, 100),
-        ("Takoyaki - Overload (7pcs)", 80, 100),
+        ("Takoyaki - Cheese (5pcs)", 45, 100, "snacks"),
+        ("Takoyaki - Ham and Cheese (5pcs)", 50, 100, "snacks"),
+        ("Takoyaki - Crab (5pcs)", 50, 100, "snacks"),
+        ("Takoyaki - Overload (7pcs)", 80, 100, "snacks"),
 
-        ("Chicken Tenders - Sour and Cream", 60, 100),
-        ("Chicken Tenders - Barbeque", 60, 100),
-        ("Chicken Tenders - Cheese", 60, 100),
+        ("Chicken Tenders - Sour and Cream", 60, 100, "snacks"),
+        ("Chicken Tenders - Barbeque", 60, 100, "snacks"),
+        ("Chicken Tenders - Cheese", 60, 100, "snacks"),
 
-        ("Sizzling Tofu", 189, 100),
-        ("Sizzling Liempo", 199, 100),
-        ("Sizzling Sisig", 199, 100),
+        ("Sizzling Tofu", 189, 100, "meals"),
+        ("Sizzling Liempo", 199, 100, "meals"),
+        ("Sizzling Sisig", 199, 100, "meals"),
 
-        ("Sisig and Liempo", 199, 100),
-        ("Sisig and Tofu", 199, 100),
-        ("Liempo and Tofu", 199, 100),
+        ("Sisig and Liempo", 199, 100, "meals"),
+        ("Sisig and Tofu", 199, 100, "meals"),
+        ("Liempo and Tofu", 199, 100, "meals"),
 
-        ("Tocilog", 60, 100),
-        ("Hotsilog", 60, 100),
-        ("Chicksilog", 99, 100),
-        ("Porksilog", 99, 100),
-        ("Sisig Silog", 99, 100),
+        ("Tocilog", 60, 100, "meals"),
+        ("Hotsilog", 60, 100, "meals"),
+        ("Chicksilog", 99, 100, "meals"),
+        ("Porksilog", 99, 100, "meals"),
+        ("Sisig Silog", 99, 100, "meals"),
 
-        ("Sizzling Sisig (Rice Meal)", 109, 100),
-        ("Sizzling Tofu (Rice Meal)", 109, 100),
-        ("Sizzling Liempo (Rice Meal)", 109, 100),
+        ("Sizzling Sisig (Rice Meal)", 109, 100, "meals"),
+        ("Sizzling Tofu (Rice Meal)", 109, 100, "meals"),
+        ("Sizzling Liempo (Rice Meal)", 109, 100, "meals"),
     ]
 
     cursor.executemany(
-        "INSERT OR IGNORE INTO products (name, price, stock) VALUES (?, ?, ?)",
+        "INSERT OR IGNORE INTO products (name, price, stock, category) VALUES (?, ?, ?, ?)",
         products
     )
 
