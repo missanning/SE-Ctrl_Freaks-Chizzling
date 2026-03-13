@@ -1,7 +1,9 @@
 import sqlite3
 
 def connect_db():
-    conn = sqlite3.connect("sales_inventory.db")
+    import os
+    db_path = os.path.join(os.path.dirname(__file__), "sales_inventory.db")
+    conn = sqlite3.connect(db_path)
     return conn
 
 
@@ -85,8 +87,8 @@ def insert_default_data():
     # DEFAULT USERS
     users = [
         ("cashier", "1234", "cashier"),
-        ("Staff_1", "1234", "inventory_staff"),
-        ("Admin_1", "1234", "admin_staff")
+        ("inventory_staff", "1234", "inventory_staff"),
+        ("admin", "1234", "owner")
     ]
 
     cursor.executemany(

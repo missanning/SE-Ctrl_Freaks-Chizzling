@@ -2,7 +2,6 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
 from database_setup import connect_db
-from ProductManagementSystem import ProductManagementSystem
 
 class MainApp:
     def __init__(self, root):
@@ -53,6 +52,12 @@ class MainApp:
         if role == "cashier":
             self.display_label.config(text="Logged in as Cashier")
             messagebox.showinfo("Success", "Logged in successfully!")
+            self.open_chizzling_pos()
+
+        elif role == "owner":
+            self.display_label.config(text="Logged in as Owner")
+            messagebox.showinfo("Success", "Logged in successfully!")
+            self.open_dashboard()
 
         elif role == "inventory_staff":
             self.display_label.config(text="Logged in as Inventory Staff")
@@ -62,6 +67,26 @@ class MainApp:
         else:
             self.display_label.config(text=f"Logged in as {role}")
             messagebox.showinfo("Success", f"Logged in as {role}")
+
+    def open_chizzling_pos(self):
+        self.root.destroy()
+        import sys
+        import os
+        sys.path.insert(0, os.path.dirname(__file__))
+        from ChizzlingPOS import POS
+        new_root = tk.Tk()
+        app = POS(new_root)
+        new_root.mainloop()
+
+    def open_dashboard(self):
+        self.root.destroy()
+        import sys
+        import os
+        sys.path.insert(0, os.path.dirname(__file__))
+        from dashboard import Dashboard
+        new_root = tk.Tk()
+        app = Dashboard(new_root)
+        new_root.mainloop()
 
     def LoginInventoryStaff(self):
         self.root.destroy()
