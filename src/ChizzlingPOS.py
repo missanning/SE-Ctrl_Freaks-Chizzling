@@ -23,48 +23,6 @@ def get_asset_path(filename):
     project_root = os.path.dirname(os.path.dirname(__file__))
     return os.path.join(project_root, "assets", filename)
 
-class LoginWindow:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Login - Chizzling POS")
-        self.root.geometry("300x150")
-        
-        tk.Label(root, text="Username:").grid(row=0, column=0, padx=10, pady=10)
-        self.username_entry = tk.Entry(root)
-        self.username_entry.grid(row=0, column=1, padx=10, pady=10)
-        
-        tk.Label(root, text="Password:").grid(row=1, column=0, padx=10, pady=10)
-        self.password_entry = tk.Entry(root, show="*")
-        self.password_entry.grid(row=1, column=1, padx=10, pady=10)
-        
-        tk.Button(root, text="Login", command=self.login).grid(row=2, column=0, columnspan=2, pady=10)
-    
-    def login(self):
-        username = self.username_entry.get()
-        password = self.password_entry.get()
-        
-        conn = connect_db()
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM users WHERE username=? AND password=?", (username, password))
-        user = cursor.fetchone()
-        conn.close()
-        
-        if user:
-            user_role = user[3]  # role is the 4th column
-            self.root.destroy()
-            root = tk.Tk()
-            
-            # If owner, show dashboard; if cashier, show POS
-            if user_role and user_role.lower() == "owner":
-                from dashboard import Dashboard
-                app = Dashboard(root)
-            else:
-                app = POS(root)
-            
-            root.mainloop()
-        else:
-            messagebox.showerror("Error", "Invalid credentials")
-
 class POS:
     def __init__(self, root):
         self.root = root
@@ -123,8 +81,8 @@ class POS:
         # Logout button on top of image (orange)
         logout_btn = tk.Button(
             header_label,
-            text="⎋ LOGOUT",
-            command=self.logout,
+            text="⎋ EXIT",
+            command=self.root.destroy,
             bg="#FF6600",
             fg="white",
             activebackground="#FF8844",
@@ -352,12 +310,6 @@ class POS:
                   bg="#28A745", fg="white", activebackground="#3DC06B", activeforeground="white",
                   relief="raised").grid(row=5, column=0, columnspan=3, pady=10, padx=10, sticky="ew")
     
-    def logout(self):
-        self.root.destroy()
-        root = tk.Tk()
-        app = LoginWindow(root)
-        root.mainloop()
-
     def cancel_order(self):
         if not self.cart:
             messagebox.showinfo("Info", "Cart is already empty")
@@ -524,5 +476,5 @@ class POS:
 
 if __name__ == "__main__":
     root = tk.Tk()
-    app = LoginWindow(root)
+    app = POS(root)
     root.mainloop()
