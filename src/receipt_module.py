@@ -6,7 +6,7 @@ import win32ui
 import os
 
 def generate_receipt_text(transaction_id, date, cart, total, change):
-    receipt = f"""{'='*32}
+    receipt = f"""{'='*30}
       CHIZZLING POS
 {'='*30}
 Date: {date}
