@@ -1,14 +1,17 @@
 import sqlite3
 
 def connect_db():
-    conn = sqlite3.connect("sales_inventory.db")
+    import os
+    db_path = os.path.join(os.path.dirname(__file__), "sales_inventory.db")
+    conn = sqlite3.connect(db_path)
     return conn
+
 
 def create_tables():
     conn = connect_db()
     cursor = conn.cursor()
 
-    # Users table (Cashier / Owner)
+    # USERS TABLE
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -18,17 +21,17 @@ def create_tables():
     )
     """)
 
-    # Products table
+    # PRODUCTS TABLE
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS products (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT,
+        name TEXT UNIQUE,
         price REAL,
         stock INTEGER
     )
     """)
 
-    # Transactions table
+    # TRANSACTIONS TABLE
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS transactions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -39,7 +42,7 @@ def create_tables():
     )
     """)
 
-    # Transaction Items table
+    # TRANSACTION ITEMS TABLE
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS transaction_items (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,65 +55,80 @@ def create_tables():
     )
     """)
 
+    # INGREDIENTS TABLE (Inventory)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS ingredients (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE,
+        stock REAL,
+        unit TEXT
+    )
+    """)
+
+    # RECIPE TABLE (ingredient usage per product)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS recipe_ingredients (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_name TEXT,
+        ingredient_name TEXT,
+        quantity REAL,
+        unit TEXT
+    )
+    """)
+
     conn.commit()
     conn.close()
+
 
 def insert_default_data():
     conn = connect_db()
     cursor = conn.cursor()
 
-    # Insert default user
-    cursor.execute("INSERT OR IGNORE INTO users (username, password, role) VALUES (?, ?, ?)",
-                   ("cashier", "1234", "cashier"))
-    
-    # Insert inventory_staff user
-    cursor.execute("INSERT OR IGNORE INTO users (username, password, role) VALUES (?, ?, ?)",
-                   ("Staff_1", "1234", "inventory_staff"))
-    
-    # Insert admin_staff user
-    cursor.execute("INSERT OR IGNORE INTO users (username, password, role) VALUES (?, ?, ?)",
-                   ("Admin_1", "1234", "admin_staff"))
+    # DEFAULT USERS
+    users = [
+        ("cashier", "1234", "cashier"),
+        ("inventory_staff", "1234", "inventory_staff"),
+        ("admin", "1234", "owner")
+    ]
 
+    cursor.executemany(
+        "INSERT OR IGNORE INTO users (username, password, role) VALUES (?, ?, ?)",
+        users
+    )
+
+    # PRODUCTS
     products = [
 
-        # SNACKS
         ("Nachos", 80, 100),
         ("Shawarma Rice", 80, 100),
 
-        # FRENCH FRIES
         ("Fries - Cheese", 50, 100),
         ("Fries - Barbeque", 50, 100),
         ("Fries - Sour and Cream", 50, 100),
 
-        # TAKOYAKI
         ("Takoyaki - Cheese (5pcs)", 45, 100),
         ("Takoyaki - Ham and Cheese (5pcs)", 50, 100),
         ("Takoyaki - Crab (5pcs)", 50, 100),
         ("Takoyaki - Overload (7pcs)", 80, 100),
 
-        # CHICKEN TENDERS RICE
         ("Chicken Tenders - Sour and Cream", 60, 100),
         ("Chicken Tenders - Barbeque", 60, 100),
         ("Chicken Tenders - Cheese", 60, 100),
 
-        # BUNDLE MEALS
         ("Sizzling Tofu", 189, 100),
         ("Sizzling Liempo", 199, 100),
         ("Sizzling Sisig", 199, 100),
 
-        # COMBO BUNDLE
         ("Sisig and Liempo", 199, 100),
         ("Sisig and Tofu", 199, 100),
         ("Liempo and Tofu", 199, 100),
 
-        # SILOG
         ("Tocilog", 60, 100),
         ("Hotsilog", 60, 100),
         ("Chicksilog", 99, 100),
         ("Porksilog", 99, 100),
         ("Sisig Silog", 99, 100),
 
-        # SIZZLING RICE MEALS
         ("Sizzling Sisig (Rice Meal)", 109, 100),
         ("Sizzling Tofu (Rice Meal)", 109, 100),
         ("Sizzling Liempo (Rice Meal)", 109, 100),
@@ -121,8 +139,86 @@ def insert_default_data():
         products
     )
 
+    # INGREDIENT INVENTORY
+    ingredients = [
+
+        ("Pork", 5000, "grams"),
+        ("Liempo", 5000, "grams"),
+        ("Chicken Fillet", 5000, "grams"),
+        ("Tofu", 2000, "grams"),
+        ("Beef", 2000, "grams"),
+        ("Potato Fries", 5000, "grams"),
+
+        ("Egg", 200, "pcs"),
+        ("Green Chili", 50, "pcs"),
+        ("Red Chili", 50, "pcs"),
+        ("Onion", 100, "pcs"),
+        ("Garlic", 100, "pcs"),
+        ("Tomato", 50, "pcs"),
+        ("Cucumber", 50, "pcs"),
+
+        ("Butter", 500, "grams"),
+        ("Seasoning", 500, "tsp"),
+        ("Oyster Sauce", 500, "tsp"),
+
+        ("All Purpose Flour", 2000, "grams"),
+        ("Bread Crumbs", 2000, "grams"),
+
+        ("Cooking Oil", 1500, "ml"),
+
+        ("Cheese", 100, "slices"),
+        ("Ham", 100, "slices"),
+        ("Crab Stick", 100, "slices")
+    ]
+
+    cursor.executemany(
+        "INSERT OR IGNORE INTO ingredients (name, stock, unit) VALUES (?, ?, ?)",
+        ingredients
+    )
+
+    # RECIPES (ingredient usage per menu item)
+    recipes = [
+
+        ("Sizzling Sisig", "Pork", 100, "grams"),
+        ("Sizzling Sisig", "Green Chili", 1, "pcs"),
+        ("Sizzling Sisig", "Egg", 1, "pcs"),
+        ("Sizzling Sisig", "Onion", 0.25, "pcs"),
+        ("Sizzling Sisig", "Butter", 5, "grams"),
+        ("Sizzling Sisig", "Seasoning", 0.5, "tsp"),
+
+        ("Sizzling Liempo", "Liempo", 100, "grams"),
+        ("Sizzling Liempo", "Seasoning", 0.5, "tsp"),
+        ("Sizzling Liempo", "Oyster Sauce", 0.5, "tsp"),
+
+        ("Sizzling Tofu", "Tofu", 100, "grams"),
+        ("Sizzling Tofu", "Red Chili", 1, "pcs"),
+        ("Sizzling Tofu", "Onion", 0.25, "pcs"),
+
+        ("Nachos", "Beef", 100, "grams"),
+        ("Nachos", "Cucumber", 0.25, "pcs"),
+        ("Nachos", "Tomato", 1, "pcs"),
+
+        ("Porksilog", "Pork", 125, "grams"),
+        ("Porksilog", "Bread Crumbs", 10, "grams"),
+        ("Porksilog", "All Purpose Flour", 10, "grams"),
+        ("Porksilog", "Egg", 1, "pcs"),
+
+        ("Chicken Tenders - Cheese", "Chicken Fillet", 150, "grams"),
+        ("Chicken Tenders - Cheese", "Bread Crumbs", 10, "grams"),
+        ("Chicken Tenders - Cheese", "All Purpose Flour", 10, "grams"),
+        ("Chicken Tenders - Cheese", "Egg", 1, "pcs"),
+
+        ("Fries - Cheese", "Potato Fries", 250, "grams"),
+    ]
+
+    cursor.executemany(
+        "INSERT OR IGNORE INTO recipe_ingredients (product_name, ingredient_name, quantity, unit) VALUES (?, ?, ?, ?)",
+        recipes
+    )
+
     conn.commit()
     conn.close()
+
 
 if __name__ == "__main__":
     create_tables()
