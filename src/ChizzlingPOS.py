@@ -203,14 +203,6 @@ class POS:
         self.product_canvas.pack(side="left", fill="both", expand=True)
         product_scrollbar.pack(side="right", fill="y")
 
-        # Store selected product
-        self.selected_product = None
-
-        # Add to Cart button
-        tk.Button(product_frame, text="Add to Cart", command=self.add_to_cart,
-                  bg="#FF6600", fg="white", activebackground="#FF8844", activeforeground="white",
-                  relief="raised").pack(fill="x", padx=10, pady=(5, 10))
-
         # --- Load images --- NOT YET ACTIVATED DUE TO THE DATABASE NOT HAVINF CATEGORY FIELD YET
         self.meals_img_inactive = tk.PhotoImage(file=get_asset_path("MEALS1.png"))
         self.snacks_img_inactive = tk.PhotoImage(file=get_asset_path("SNACKS1.png"))
@@ -293,6 +285,10 @@ class POS:
 
         # Default to showing all products
         set_active_category("all")
+
+        # Store selected product and click tracking
+        self.selected_product = None
+        self.product_click_count = {}
 
         # --- Checkout Frame ---
         self.cart_frame = tk.Frame(self.root, bg="#FFFFFF", bd=2, relief="raised")
@@ -467,41 +463,143 @@ class POS:
                                  font=("Arial", 8, "bold"), fg="#FF6600")
             price_label.pack(pady=(0,5))
             
-            # Bind click events to select product
-            def select_product(prod=product):
-                self.selected_product = prod
-                for widget in self.product_grid_frame.winfo_children():
-                    widget.config(bg="#FFFFFF")
-                product_item.config(bg="#E6F3FF")
+            # Bind click events to select product with double-click detection
+            def handle_product_click(prod=product, item_frame=product_item):
+                # Track clicks for this product
+                prod_id = prod[0]
+                if prod_id not in self.product_click_count:
+                    self.product_click_count[prod_id] = 0
+                
+                self.product_click_count[prod_id] += 1
+                
+                # First click - select product
+                if self.product_click_count[prod_id] == 1:
+                    self.selected_product = prod
+                    # Clear all highlights
+                    for widget in self.product_grid_frame.winfo_children():
+                        widget.config(bg="#FFFFFF")
+                    # Highlight selected
+                    item_frame.config(bg="#E6F3FF")
+                    
+                    # Reset click count after delay if no second click
+                    self.root.after(500, lambda: self.reset_click_count(prod_id))
+                    
+                # Second click - show quantity dialog
+                elif self.product_click_count[prod_id] == 2:
+                    self.show_quantity_dialog(prod)
+                    self.product_click_count[prod_id] = 0  # Reset
             
-            product_item.bind("<Button-1>", lambda e, prod=product: select_product(prod))
-            img_label.bind("<Button-1>", lambda e, prod=product: select_product(prod))
-            name_label.bind("<Button-1>", lambda e, prod=product: select_product(prod))
-            price_label.bind("<Button-1>", lambda e, prod=product: select_product(prod))
+            product_item.bind("<Button-1>", lambda e, prod=product: handle_product_click(prod, product_item))
+            img_label.bind("<Button-1>", lambda e, prod=product: handle_product_click(prod, product_item))
+            name_label.bind("<Button-1>", lambda e, prod=product: handle_product_click(prod, product_item))
+            price_label.bind("<Button-1>", lambda e, prod=product: handle_product_click(prod, product_item))
         
         # Configure grid weights
         for col in range(cols):
             self.product_grid_frame.grid_columnconfigure(col, weight=1)
 
-    def add_to_cart(self):
-        if not self.selected_product:
-            messagebox.showwarning("Warning", "Please select a product first")
-            return
-
-        product = self.selected_product
-        qty = 1
-
-        # Check if product already in cart
-        for item in self.cart:
-            if item['id'] == product[0]:
-                item['qty'] += qty
-                self.update_cart()
-                return
-
-        # Add new product to cart
-        self.cart.append({'id': product[0], 'name': product[1], 'price': product[2], 'qty': qty})
-        self.update_cart()
-        self.update_total()
+    def reset_click_count(self, prod_id):
+        """Reset click count if no second click occurs within time limit"""
+        if prod_id in self.product_click_count and self.product_click_count[prod_id] == 1:
+            self.product_click_count[prod_id] = 0
+    
+    def show_quantity_dialog(self, product):
+        """Show dialog with product image and quantity selection"""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Add to Cart")
+        dialog.geometry("400x500")
+        dialog.configure(bg="#FFFFFF")
+        dialog.resizable(False, False)
+        
+        # Center the dialog on screen
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        # Calculate center position
+        dialog.update_idletasks()
+        width = dialog.winfo_width()
+        height = dialog.winfo_height()
+        x = (dialog.winfo_screenwidth() // 2) - (width // 2)
+        y = (dialog.winfo_screenheight() // 2) - (height // 2)
+        dialog.geometry(f"{width}x{height}+{x}+{y}")
+        
+        # Product image
+        try:
+            if Image and ImageTk:
+                img_path = self.get_product_image_path(product[1])
+                if os.path.exists(img_path):
+                    pil_img = Image.open(img_path)
+                    pil_img = pil_img.resize((200, 150), Image.LANCZOS)
+                    photo = ImageTk.PhotoImage(pil_img)
+                    img_label = tk.Label(dialog, image=photo, bg="#FFFFFF")
+                    img_label.image = photo
+                    img_label.pack(pady=20)
+                else:
+                    tk.Label(dialog, text="[No Image]", bg="#FFFFFF", width=25, height=10).pack(pady=20)
+            else:
+                tk.Label(dialog, text="[No Image]", bg="#FFFFFF", width=25, height=10).pack(pady=20)
+        except Exception:
+            tk.Label(dialog, text="[No Image]", bg="#FFFFFF", width=25, height=10).pack(pady=20)
+        
+        # Product name
+        tk.Label(dialog, text=product[1], bg="#FFFFFF", font=("Arial", 12, "bold"), 
+                wraplength=350, justify="center").pack(pady=10)
+        
+        # Price
+        tk.Label(dialog, text=f"₱{product[2]:.2f}", bg="#FFFFFF", 
+                font=("Arial", 11, "bold"), fg="#FF6600").pack(pady=5)
+        
+        # Quantity frame
+        qty_frame = tk.Frame(dialog, bg="#FFFFFF")
+        qty_frame.pack(pady=20)
+        
+        tk.Label(qty_frame, text="Quantity:", bg="#FFFFFF", font=("Arial", 10)).pack(side="left", padx=5)
+        
+        # Quantity controls
+        qty_var = tk.IntVar(value=1)
+        
+        def decrease_qty():
+            if qty_var.get() > 1:
+                qty_var.set(qty_var.get() - 1)
+        
+        def increase_qty():
+            qty_var.set(qty_var.get() + 1)
+        
+        tk.Button(qty_frame, text="-", command=decrease_qty, width=3).pack(side="left", padx=2)
+        qty_label = tk.Label(qty_frame, textvariable=qty_var, bg="#FFFFFF", width=5, 
+                           font=("Arial", 10), relief="sunken")
+        qty_label.pack(side="left", padx=5)
+        tk.Button(qty_frame, text="+", command=increase_qty, width=3).pack(side="left", padx=2)
+        
+        # Buttons frame
+        btn_frame = tk.Frame(dialog, bg="#FFFFFF")
+        btn_frame.pack(pady=30)
+        
+        # Add to Cart button
+        def add_to_cart_from_dialog():
+            qty = qty_var.get()
+            # Check if product already in cart
+            for item in self.cart:
+                if item['id'] == product[0]:
+                    item['qty'] += qty
+                    self.update_cart()
+                    dialog.destroy()
+                    return
+            
+            # Add new product to cart
+            self.cart.append({'id': product[0], 'name': product[1], 'price': product[2], 'qty': qty})
+            self.update_cart()
+            self.update_total()
+            dialog.destroy()
+        
+        tk.Button(btn_frame, text="Add to Cart", command=add_to_cart_from_dialog,
+                 bg="#FF6600", fg="white", activebackground="#FF8844", activeforeground="white",
+                 relief="raised", width=12, font=("Arial", 10)).pack(side="left", padx=10)
+        
+        # Cancel button
+        tk.Button(btn_frame, text="Cancel", command=dialog.destroy,
+                 bg="#DC3545", fg="white", activebackground="#C82333", activeforeground="white",
+                 relief="raised", width=12, font=("Arial", 10)).pack(side="left", padx=10)
 
     def update_cart(self):
         # Clear current rows (including header), then rebuild header + items so the header never disappears.
