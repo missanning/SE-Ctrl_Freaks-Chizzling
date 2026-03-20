@@ -44,7 +44,7 @@ class QuantityDialog:
             "Pale Pilsen": "redhorse.jpg"
         }
         
-        filename = image_mapping.get(product_name, "nachos.jpg")
+        filename = image_mapping.get(product_name, "no image.jpg")
         project_root = os.path.dirname(os.path.dirname(__file__))
         return os.path.join(project_root, "assets", "food @chizzlin", filename)
     
