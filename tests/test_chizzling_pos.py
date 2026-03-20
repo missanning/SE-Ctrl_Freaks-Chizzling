@@ -44,14 +44,14 @@ def test_filter_by_drinks_category(setup_test_db):
     cursor = setup_test_db.cursor()
     cursor.execute("SELECT COUNT(*) FROM products WHERE category = 'drinks'")
     count = cursor.fetchone()[0]
-    assert count > 0, "Should have no products in Drinks category currently"
+    assert count > 0, "Should have products in Drinks category"
 
 def test_filter_by_alcohol_category(setup_test_db):
     """Test filtering products by Alcohol category"""
     cursor = setup_test_db.cursor()
     cursor.execute("SELECT COUNT(*) FROM products WHERE category = 'alcohol'")
     count = cursor.fetchone()[0]
-    assert count > 0, "Should have no products in Alcohol category currently"
+    assert count > 0, "Should have products in Alcohol category"
 
 def test_all_products_have_valid_category(setup_test_db):
     """Test that all products belong to valid categories"""
