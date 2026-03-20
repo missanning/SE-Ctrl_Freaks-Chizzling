@@ -4,6 +4,7 @@ import sqlite3
 from tkinter import PhotoImage
 from tkinter import ttk
 from receipt_module import show_receipt_window
+import os
 
 # For responsive image scaling (optional; falls back to Tkinter PhotoImage if missing)
 try:
@@ -94,15 +95,46 @@ class POS:
         )
         logout_btn.place(relx=0.95, rely=0.5, anchor="e")
 
+    def get_product_image_path(self, product_name):
+        """Map product names to image filenames"""
+        # Mapping of product names to image files
+        image_mapping = {
+            "Nachos": "nachos.jpg",
+            "Shawarma Rice": "shawarmarice.jpg",
+            "Fries - Cheese": "fries.jpg",
+            "Fries - Barbeque": "fries.jpg",
+            "Fries - Sour and Cream": "fries.jpg",
+            "Takoyaki - Cheese (5pcs)": "takoyakicheese.jpg",
+            "Takoyaki - Ham and Cheese (5pcs)": "takoyakihamcheese.jpg",
+            "Takoyaki - Crab (5pcs)": "takoyakicrab.jpg",
+            "Takoyaki - Overload (7pcs)": "takoyakioverload.jpg",
+            "Chicken Tenders": "chickentenderscheese.jpg",
+            "Sisig Silog": "sisigsilog.jpg",
+            "Chicken silog": "chicksilog.jpg",
+            "Sizzling Sisig (Rice Meal)": "sizzlingsisig.jpg",
+            "Sizzling Tofu (Rice Meal)": "sizzlingtofu.png",
+            "Sizzling Liempo (Rice Meal)": "sizzlingliempo.jpg",
+            "Sizzling Sisig": "sizzlingsisig.jpg",
+            "Sizzling Tofu": "sizzlingtofu.png",
+            "Sizzling Liempo": "sizzlingliempo.jpg",
+            "Sisig and Liempo": "sisig_liempo.png",
+            "Sisig and Tofu": "tofu_sisig.png",
+            "Sizzling Liempo and Tofu": "liempo_tofu.png",
+            "Red Horse 1 Litro": "redhorse.jpg",
+            "Alfonso Light": "alfonsolight.jpg",
+            "Gin Bilog": "ginbilog.jpg",
+            "Gin Kwatro": "ginkwatro.jpg",
+            "Pale Pilsen": "redhorse.jpg"
+        }
+        
+        filename = image_mapping.get(product_name, "no image.jpg")
+        project_root = os.path.dirname(os.path.dirname(__file__))
+        return os.path.join(project_root, "assets", "food @chizzlin", filename)
+
     def search_products(self, event=None):
         query = self.search_entry.get().lower()
-
         filtered = [p for p in self.products if query in p[1].lower()]
-
-        self.product_listbox.delete(0, tk.END)
-
-        for product in filtered:
-            self.product_listbox.insert(tk.END, f"{product[1]} - {product[2]}")
+        self.display_products(filtered)
 
 
     def create_widgets(self):
@@ -135,15 +167,49 @@ class POS:
 
         self.search_entry.bind("<KeyRelease>", self.search_products)
 
-        # --- Actual Listbox below header ---
-        self.product_listbox = tk.Listbox(product_frame, width=40)
-        self.product_listbox.pack(fill="both", expand=True, padx=5, pady=(0,5))
+        # --- Product Grid Container ---
+        canvas_frame = tk.Frame(product_frame, bg="#FAF3E1")
+        canvas_frame.pack(fill="both", expand=True, padx=5, pady=(0,5))
+        
+        self.product_canvas = tk.Canvas(canvas_frame, bg="#FAF3E1", highlightthickness=0)
+        product_scrollbar = tk.Scrollbar(canvas_frame, orient="vertical", command=self.product_canvas.yview)
+        self.product_grid_frame = tk.Frame(self.product_canvas, bg="#FAF3E1")
+        
+        self.product_grid_frame.bind(
+            "<Configure>",
+            lambda e: self.product_canvas.configure(scrollregion=self.product_canvas.bbox("all"))
+        )
+        
+        self.product_canvas.create_window((0, 0), window=self.product_grid_frame, anchor="nw")
+        self.product_canvas.configure(yscrollcommand=product_scrollbar.set)
+        
+        # Mouse wheel scrolling for products
+        def _on_product_mousewheel(event):
+            if self.product_canvas.bbox("all"):
+                bbox = self.product_canvas.bbox("all")
+                canvas_height = self.product_canvas.winfo_height()
+                if bbox[3] > canvas_height:
+                    self.product_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        
+        def _bind_product_mousewheel(event):
+            self.product_canvas.bind_all("<MouseWheel>", _on_product_mousewheel)
+        
+        def _unbind_product_mousewheel(event):
+            self.product_canvas.unbind_all("<MouseWheel>")
+        
+        self.product_canvas.bind("<Enter>", _bind_product_mousewheel)
+        self.product_canvas.bind("<Leave>", _unbind_product_mousewheel)
+        
+        self.product_canvas.pack(side="left", fill="both", expand=True)
+        product_scrollbar.pack(side="right", fill="y")
 
-        # Add to Cart button (placed inside product panel so it stays visible)
-        # Add to Cart button (orange)
+        # Store selected product
+        self.selected_product = None
+
+        # Add to Cart button
         tk.Button(product_frame, text="Add to Cart", command=self.add_to_cart,
                   bg="#FF6600", fg="white", activebackground="#FF8844", activeforeground="white",
-                  relief="raised").pack(fill="x", padx=10, pady=(0, 10))
+                  relief="raised").pack(fill="x", padx=10, pady=(5, 10))
 
         # --- Load images --- NOT YET ACTIVATED DUE TO THE DATABASE NOT HAVINF CATEGORY FIELD YET
         self.meals_img_inactive = tk.PhotoImage(file=get_asset_path("MEALS1.png"))
@@ -351,18 +417,78 @@ class POS:
         self.display_products(self.products)
 
     def display_products(self, products):
-        self.product_listbox.delete(0, tk.END)
-        for product in products:
-            self.product_listbox.insert(tk.END, f"{product[1]} - {product[2]:.2f}")
+        # Clear existing product widgets
+        for widget in self.product_grid_frame.winfo_children():
+            widget.destroy()
+        
+        # Display products in a grid with images
+        cols = 5
+        for i, product in enumerate(products):
+            row = i // cols
+            col = i % cols
+            
+            # Create product frame
+            product_item = tk.Frame(self.product_grid_frame, bg="#FFFFFF", bd=1, relief="solid", cursor="hand2")
+            product_item.grid(row=row, column=col, padx=5, pady=5, sticky="nsew")
+            
+            try:
+                # Load and resize product image (bigger size)
+                if Image and ImageTk:
+                    img_path = self.get_product_image_path(product[1])
+                    if os.path.exists(img_path):
+                        pil_img = Image.open(img_path)
+                        pil_img = pil_img.resize((195, 180), Image.LANCZOS)
+                        photo = ImageTk.PhotoImage(pil_img)
+                    else:
+                        pil_img = Image.new('RGB', (195, 180), color='lightgray')
+                        photo = ImageTk.PhotoImage(pil_img)
+                else:
+                    photo = None
+                
+                if photo:
+                    img_label = tk.Label(product_item, image=photo, bg="#FFFFFF")
+                    img_label.image = photo
+                    img_label.pack(pady=5)
+                else:
+                    img_label = tk.Label(product_item, text="[IMG]", bg="#FFFFFF", width=24, height=15)
+                    img_label.pack(pady=5)
+                    
+            except Exception:
+                img_label = tk.Label(product_item, text="[IMG]", bg="#FFFFFF", width=24, height=15)
+                img_label.pack(pady=5)
+            
+            # Product name
+            name_label = tk.Label(product_item, text=product[1], bg="#FFFFFF", 
+                                font=("Arial", 8), wraplength=195, justify="center")
+            name_label.pack(pady=(0,5))
+            
+            # Price
+            price_label = tk.Label(product_item, text=f"₱{product[2]:.2f}", bg="#FFFFFF", 
+                                 font=("Arial", 8, "bold"), fg="#FF6600")
+            price_label.pack(pady=(0,5))
+            
+            # Bind click events to select product
+            def select_product(prod=product):
+                self.selected_product = prod
+                for widget in self.product_grid_frame.winfo_children():
+                    widget.config(bg="#FFFFFF")
+                product_item.config(bg="#E6F3FF")
+            
+            product_item.bind("<Button-1>", lambda e, prod=product: select_product(prod))
+            img_label.bind("<Button-1>", lambda e, prod=product: select_product(prod))
+            name_label.bind("<Button-1>", lambda e, prod=product: select_product(prod))
+            price_label.bind("<Button-1>", lambda e, prod=product: select_product(prod))
+        
+        # Configure grid weights
+        for col in range(cols):
+            self.product_grid_frame.grid_columnconfigure(col, weight=1)
 
     def add_to_cart(self):
-        selected = self.product_listbox.curselection()
-        if not selected:
+        if not self.selected_product:
+            messagebox.showwarning("Warning", "Please select a product first")
             return
 
-        index = selected[0]
-        product = self.products[index]
-
+        product = self.selected_product
         qty = 1
 
         # Check if product already in cart
@@ -461,9 +587,6 @@ class POS:
                 INSERT INTO transaction_items (transaction_id, product_id, quantity, subtotal)
                 VALUES (?, ?, ?, ?)
             """, (transaction_id, item['id'], item['qty'], subtotal))
-
-            cursor.execute("UPDATE products SET stock = stock - ? WHERE id = ?",
-                           (item['qty'], item['id']))
 
         conn.commit()
         conn.close()
