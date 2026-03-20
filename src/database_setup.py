@@ -27,7 +27,6 @@ def create_tables():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT UNIQUE,
         price REAL,
-        stock INTEGER,
         category TEXT
     )
     """)
@@ -106,44 +105,98 @@ def insert_default_data():
 
     # PRODUCTS
     products = [
+        #Snacks
+        ("Nachos", 80, "snacks"),
+        ("Fries - Cheese", 50, "snacks"),
+        ("Fries - Barbeque", 50, "snacks"),
+        ("Fries - Sour and Cream", 50, "snacks"),
+        ("Takoyaki - Cheese (5pcs)", 45, "snacks"),
+        ("Takoyaki - Ham and Cheese (5pcs)", 50, "snacks"),
+        ("Takoyaki - Crab (5pcs)", 50, "snacks"),
+        ("Takoyaki - Overload (7pcs)", 80, "snacks"),
+        ("Shawarma Rice", 80, "snacks"),
 
-        ("Nachos", 80, 100, "snacks"),
-        ("Shawarma Rice", 80, 100, "meals"),
+        #Rice Meals
+        ("Chicken Tenders", 70, "meals"),    
+        ("Sisig Silog", 109, "meals"),
+        ("Chicken silog", 99, "meals"),
+        ("Sizzling Sisig (Rice Meal)", 109, "meals"),
+        ("Sizzling Tofu (Rice Meal)", 109, "meals"),
+        ("Sizzling Liempo (Rice Meal)", 109, "meals"),
 
-        ("Fries - Cheese", 50, 100, "snacks"),
-        ("Fries - Barbeque", 50, 100, "snacks"),
-        ("Fries - Sour and Cream", 50, 100, "snacks"),
+        #Bundle Meals   
+        ("Sizzling Sisig", 199, "meals"),
+        ("Sizzling Tofu", 199, "meals"),
+        ("Sizzling Liempo", 199, "meals"),
+        ("Sisig and Liempo", 199, "meals"),
+        ("Sisig and Tofu", 199, "meals"),
+        ("Sizzling Liempo and Tofu", 199, "meals"),
+        
+        #Beverages
+        ("Red Horse 1 Litro", 150, "alcohol"),
+        ("Alfonso Light", 350, "alcohol"),
+        ("Gin Bilog", 85, "alcohol"),
+        ("Gin Kwatro", 180, "alcohol"),
+        ("Pale Pilsen", 150, "alcohol"),
 
-        ("Takoyaki - Cheese (5pcs)", 45, 100, "snacks"),
-        ("Takoyaki - Ham and Cheese (5pcs)", 50, 100, "snacks"),
-        ("Takoyaki - Crab (5pcs)", 50, 100, "snacks"),
-        ("Takoyaki - Overload (7pcs)", 80, 100, "snacks"),
+    
+        #Milk Tea
+        ("Chocolate Milk Tea", 39, "drinks"),
+        ("Chocolate Milk Tea 1 liter", 89, "drinks"),
+        ("Okinawa Milk Tea", 39, "drinks"),
+        ("Okinawa Milk Tea 1 liter", 89, "drinks"),
+        ("Dark Chocolate Milk Tea", 39, "drinks"),
+        ("Dark Chocolate Milk Tea 1 liter", 89, "drinks"),
+        ("Taro Milk Tea", 39, "drinks"),
+        ("Taro Milk Tea 1 liter", 89, "drinks"),
+        ("Red Velvet Milk Tea", 39, "drinks"),
+        ("Red Velvet Milk Tea 1 liter", 89, "drinks"),
+        ("Matcha Milk Tea", 39, "drinks"),
+        ("Matcha Milk Tea 1 liter", 89, "drinks"),
+        ("Wintermelon Milk Tea", 39, "drinks"),
+        ("Wintermelon Milk Tea 1 liter", 89, "drinks"),
+        ("Cookies & Cream Milk Tea", 39, "drinks"),
+        ("Cookies & Cream Milk Tea 1 liter", 89, "drinks"),
+        ("White Bunny Milk Tea", 39, "drinks"),
+        ("White Bunny Milk Tea 1 liter", 89, "drinks"),
+        ("Mango Cheesecake Milk Tea", 39, "drinks"),
+        ("Mango Cheesecake Milk Tea 1 liter", 89, "drinks"),
 
-        ("Chicken Tenders - Sour and Cream", 60, 100, "snacks"),
-        ("Chicken Tenders - Barbeque", 60, 100, "snacks"),
-        ("Chicken Tenders - Cheese", 60, 100, "snacks"),
+        #Fruit Tea
+        ("Blueberry Fruit Tea", 39, "drinks"),
+        ("Blueberry Fruit Tea 1 liter", 89, "drinks"),
+        ("Strawberry Fruit Tea", 39, "drinks"),
+        ("Strawberry Fruit Tea 1 liter", 89, "drinks"),
+        ("Green Apple Fruit Tea", 39, "drinks"),
+        ("Green Apple Fruit Tea 1 liter", 89, "drinks"),
+        ("Four Seasons Fruit Tea", 39, "drinks"),
+        ("Four Seasons Fruit Tea 1 liter", 89, "drinks"),
+        ("Lychee Fruit Tea", 39, "drinks"),
+        ("Lychee Fruit Tea 1 liter", 89, "drinks"),
+        ("Blue Lemonade Fruit Tea", 39, "drinks"),
+        ("Blue Lemonade Fruit Tea 1 liter", 89, "drinks"),
 
-        ("Sizzling Tofu", 189, 100, "meals"),
-        ("Sizzling Liempo", 199, 100, "meals"),
-        ("Sizzling Sisig", 199, 100, "meals"),
+        #Fruit Soda
+        ("Blueberry Fruit Soda", 39, "drinks"),
+        ("Blueberry Fruit Soda 1 liter", 89, "drinks"),
+        ("Strawberry Fruit Soda", 39, "drinks"),
+        ("Strawberry Fruit Soda 1 liter", 89, "drinks"),
+        ("Green Apple Fruit Soda", 39, "drinks"),
+        ("Green Apple Fruit Soda 1 liter", 89, "drinks"),
+        ("Four Seasons Fruit Soda", 39, "drinks"),
+        ("Four Seasons Fruit Soda 1 liter", 89, "drinks"),
+        ("Lychee Fruit Soda", 39, "drinks"),
+        ("Lychee Fruit Soda 1 liter", 89, "drinks"),
+        ("Blue Lemonade Fruit Soda", 39, "drinks"),
+        ("Blue Lemonade Fruit Soda 1 liter", 89, "drinks"),
 
-        ("Sisig and Liempo", 199, 100, "meals"),
-        ("Sisig and Tofu", 199, 100, "meals"),
-        ("Liempo and Tofu", 199, 100, "meals"),
-
-        ("Tocilog", 60, 100, "meals"),
-        ("Hotsilog", 60, 100, "meals"),
-        ("Chicksilog", 99, 100, "meals"),
-        ("Porksilog", 99, 100, "meals"),
-        ("Sisig Silog", 99, 100, "meals"),
-
-        ("Sizzling Sisig (Rice Meal)", 109, 100, "meals"),
-        ("Sizzling Tofu (Rice Meal)", 109, 100, "meals"),
-        ("Sizzling Liempo (Rice Meal)", 109, 100, "meals"),
+        #Add ons
+        ("Pearl", 10, "drinks"),
+        ("Nata De Coco", 10, "drinks")      
     ]
 
     cursor.executemany(
-        "INSERT OR IGNORE INTO products (name, price, stock, category) VALUES (?, ?, ?, ?)",
+        "INSERT OR IGNORE INTO products (name, price, category) VALUES (?, ?, ?)",
         products
     )
 
@@ -228,6 +281,13 @@ def insert_default_data():
     conn.close()
 
 
+def prompt_success():
+    print("\n" + "="*50)
+    print("DATABASE SETUP COMPLETED SUCCESSFULLY!")
+    print("="*50)
+
+
 if __name__ == "__main__":
     create_tables()
     insert_default_data()
+    prompt_success()
