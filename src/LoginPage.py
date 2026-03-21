@@ -88,9 +88,9 @@ class MainApp:
         import sys
         import os
         sys.path.insert(0, os.path.dirname(__file__))
-        from ChizzlingPOS import POS
+        from ChizzlingPOS import ChizzlingPOS
         new_root = tk.Tk()
-        app = POS(new_root)
+        app = ChizzlingPOS(new_root)
         new_root.mainloop()
 
     def open_dashboard(self):
