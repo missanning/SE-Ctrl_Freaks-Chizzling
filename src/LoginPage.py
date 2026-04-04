@@ -105,7 +105,10 @@ class MainApp:
 
     def LoginInventoryStaff(self):
         self.root.destroy()
-
+        import sys
+        import os
+        sys.path.insert(0, os.path.dirname(__file__))
+        from inventory_management import ProductManagementSystem
         new_root = tk.Tk()
         app = ProductManagementSystem(new_root)
         new_root.mainloop()
