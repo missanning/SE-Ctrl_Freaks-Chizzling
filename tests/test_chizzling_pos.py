@@ -84,6 +84,10 @@ class TestDatabaseConnection:
     
     def test_connect_db_function(self):
         """Test that connect_db returns a valid connection"""
+        from database_setup import create_tables, insert_default_data
+        create_tables()
+        insert_default_data()
+
         from ChizzlingPOS import connect_db
         
         conn = connect_db()
