@@ -1,9 +1,14 @@
 import tkinter as tk
 from tkinter import messagebox, scrolledtext
 from datetime import datetime
-import win32print
-import win32ui
 import os
+
+try:
+    import win32print
+    import win32ui
+    WIN32_AVAILABLE = True
+except ImportError:
+    WIN32_AVAILABLE = False
 
 def generate_receipt_text(transaction_id, date, cart, total, change):
     receipt = f"""{'='*30}
@@ -32,6 +37,9 @@ def save_receipt(receipt, transaction_id):
         f.write(receipt)
 
 def print_receipt(receipt):
+    if not WIN32_AVAILABLE:
+        messagebox.showerror("Print Error", "Printing is only supported on Windows.")
+        return
     try:
         printer_name = win32print.GetDefaultPrinter()
         hprinter = win32print.OpenPrinter(printer_name)
