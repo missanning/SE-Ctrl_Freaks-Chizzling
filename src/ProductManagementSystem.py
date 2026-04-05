@@ -65,6 +65,12 @@ class ProductManagementSystem:
         self.button_edit = tk.Button(root, text="Edit Product", width=22, command=self.OpenEditProductWindow)
         self.button_edit.pack(pady=5)
 
+        self.archive_entry = tk.Entry(root, width=24)
+        self.archive_entry.pack(pady=5)
+
+        self.archive_button = tk.Button(root,text="Archive Product", width=22)
+        self.archive_button.pack(pady=5)
+        
     def load_products(self):
         conn = connect_db()
         cursor = conn.cursor()
@@ -112,15 +118,44 @@ class ProductManagementSystem:
         conn.close()
 
     def delete_product(self):
-        product_id = self.entry.get()
+        keyword = self.entry.get()
 
-        if product_id == "":
+        if keyword == "":
+            messagebox.showerror("Error", "Please enter a Product ID or Name to delete")
             return
 
         conn = connect_db()
         cursor = conn.cursor()
 
-        cursor.execute("DELETE FROM products WHERE id=?", (product_id,))
+        # 🔍 CHECK IF PRODUCT EXISTS
+        cursor.execute("""
+        SELECT * FROM products
+        WHERE id = ? OR name = ?
+        """, (keyword, keyword))
+
+        result = cursor.fetchone()
+
+        if not result:
+            messagebox.showerror("Error", "Product not found!")
+            conn.close()
+            return
+
+        # ✅ CONFIRM FIRST
+        decide = messagebox.askyesno(
+            "Confirm Delete",
+            f"Are you sure you want to delete '{keyword}'?"
+        )
+
+        if not decide:
+            conn.close()
+            return
+
+        # 🗑️ DELETE ONLY AFTER CONFIRMATION
+        cursor.execute("""
+        DELETE FROM products
+        WHERE id = ? OR name = ?
+        """, (keyword, keyword))
+
         conn.commit()
         conn.close()
 
@@ -140,7 +175,6 @@ class ProductManagementSystem:
         new_window = tk.Toplevel(self.root)
         IngredientsTableWindow(new_window)
 
-
 # Add Product Window
 class AddProductWindow:
     def __init__(self, root, main_app):
@@ -150,10 +184,6 @@ class AddProductWindow:
         self.root.geometry("500x400")
 
         tk.Label(root, text="Add New Product", font=("Arial", 16, "bold")).pack(pady=10)
-
-        tk.Label(root, text="Product ID:").pack(pady=5)
-        self.entry_id = tk.Entry(root, width=20)
-        self.entry_id.pack(pady=5)
 
         tk.Label(root, text="Product Name:").pack(pady=5)
         self.entry_name = tk.Entry(root, width=20)
@@ -170,18 +200,49 @@ class AddProductWindow:
         self.add_product_button = tk.Button(root, text="Add product", width=18, command=self.add_product)
         self.add_product_button.pack(pady=5)
 
+    def get_next_id(self):
+        conn = connect_db()
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT id FROM products ORDER BY id ASC")
+        ids = cursor.fetchall()
+
+        conn.close()
+
+        expected_id = 1
+
+        for row in ids:
+            current_id = int(row[0])
+            if current_id != expected_id:
+                return expected_id
+            expected_id += 1
+
+        return expected_id
+
+
     def add_product(self):
-        product_id = self.entry_id.get()
+        product_id = self.get_next_id()
         product_name = self.entry_name.get()
         product_price = self.entry_price.get()
         product_stock = self.entry_stock.get()
 
         if product_id == "" or product_name == "" or product_price == "" or product_stock == "":
+            messagebox.showerror("Error", "Please fill in all fields")
             return
 
         conn = connect_db()
         cursor = conn.cursor()
 
+        # ✅ CHECK BY NAME (NOT ID)
+        cursor.execute("SELECT * FROM products WHERE name=?", (product_name,))
+        existing = cursor.fetchone()
+
+        if existing:
+            messagebox.showerror("Error", f"Product '{product_name}' already exists!")
+            conn.close()
+            return
+
+        # INSERT
         cursor.execute(
             "INSERT INTO products (id, name, price, stock) VALUES (?, ?, ?, ?)",
             (product_id, product_name, product_price, product_stock)
@@ -189,11 +250,6 @@ class AddProductWindow:
 
         conn.commit()
         conn.close()
-
-        self.entry_id.delete(0, tk.END)
-        self.entry_name.delete(0, tk.END)
-        self.entry_price.delete(0, tk.END)
-        self.entry_stock.delete(0, tk.END)
 
         messagebox.showinfo("Success", "Product added successfully")
         self.main_app.refresh_products()
@@ -234,12 +290,35 @@ class EditProductWindow:
         product_price = self.update_price.get()
         product_stock = self.update_stock.get()
 
-        if product_id == "" or product_name == "" or product_price == "" or product_stock == "":
+        if not product_id:
+            messagebox.showerror("Error", "Please enter the Product ID to update")
             return
-
+        
         conn = connect_db()
         cursor = conn.cursor()
 
+        cursor.execute("SELECT name, price, stock FROM products WHERE id=?", (product_id,))
+        result = cursor.fetchone()
+
+        if not result:
+            messagebox.showerror("Error", f"Product with ID {product_id} not found")
+            conn.close()
+            return
+        current_name, current_price, current_stock = result 
+        product_name = product_name if product_name.strip() else current_name
+        product_price = product_price if product_price.strip() else current_price
+        product_stock = product_stock if product_stock.strip() else current_stock
+
+        if product_stock.strip():
+            try:
+                product_stock = float(product_stock)
+            except ValueError:
+                messagebox.showerror("Error", "Stock must be a number")
+                conn.close()
+                return
+        else:
+            product_stock = current_stock
+            
         cursor.execute(
             "UPDATE products SET name=?, price=?, stock=? WHERE id=?",
             (product_name, product_price, product_stock, product_id)
@@ -255,7 +334,7 @@ class EditProductWindow:
 
         messagebox.showinfo("Success", "Product edited successfully")
         self.main_app.refresh_products()
-
+        self.root.destroy()
 
 if __name__ == "__main__":
     root = tk.Tk()

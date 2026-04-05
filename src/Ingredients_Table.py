@@ -12,7 +12,11 @@ class IngredientsTableWindow:
         self.root.geometry("900x750")
 
         # Low stock limit
-        self.low_stock_limit = 50
+        self.low_grams = 5000
+        self.low_pcs = 200
+        self.low_tsp = 500
+        self.low_slices = 500
+        self.low_ml = 1500
 
         # Title
         tk.Label(self.root, text="Ingredients Table",
@@ -89,7 +93,19 @@ class IngredientsTableWindow:
         for row in rows:
             stock = row[2]  # stock column
 
-            if stock <= self.low_stock_limit:
+            if stock <= self.low_grams and row[3] == "grams":
+                self.tree.insert("", tk.END, values=row, tags=("low",))
+                low_items.append(row[1])
+            elif stock <= self.low_pcs and row[3] == "pcs":
+                self.tree.insert("", tk.END, values=row, tags=("low",))
+                low_items.append(row[1])
+            elif stock <= self.low_tsp and row[3] == "tsp":
+                self.tree.insert("", tk.END, values=row, tags=("low",))
+                low_items.append(row[1]) 
+            elif stock <= self.low_slices and row[3] == "slices":
+                self.tree.insert("", tk.END, values=row, tags=("low",))
+                low_items.append(row[1])  
+            elif stock <= self.low_ml and row[3] == "ml":
                 self.tree.insert("", tk.END, values=row, tags=("low",))
                 low_items.append(row[1])
             else:
@@ -128,22 +144,31 @@ class IngredientsTableWindow:
         conn.close()
 
     def delete_product(self):
-        product_id = self.entry.get()
+        keyword = self.entry.get()
 
-        if product_id == "":
-            messagebox.showerror("Error", "Please enter an Ingredient ID to delete")
+        if keyword == "":
+            messagebox.showerror("Error", "Please enter an Ingredient ID or Name to delete")
             return
 
         conn = connect_db()
         cursor = conn.cursor()
 
-        cursor.execute("SELECT * FROM ingredients WHERE id=?", (product_id,))
-        if not cursor.fetchone():
-            messagebox.showerror("Error", "Ingredient ID not found")
+        cursor.execute("""SELECT * FROM ingredients WHERE id= ? or name= ?""", (keyword, keyword))
+
+        result = cursor.fetchone()
+        if not result:
+            messagebox.showerror("Error", "Ingredient ID or Name not found")
             conn.close()
             return
-
-        cursor.execute("DELETE FROM ingredients WHERE id=?", (product_id,))
+        
+        decide = messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete '{keyword}'?")
+        
+        if not decide:
+            conn.close()
+            return
+        
+        cursor.execute("""DELETE FROM ingredients
+                       WHERE id = ? OR name = ?""", (keyword, keyword))
         conn.commit()
         conn.close()
 
@@ -189,25 +214,46 @@ class AddProductWindow2:
 
         # Add Button
         tk.Button(root, text="Add Ingredient", command=self.add_product).pack(pady=20)
+    def get_next_id(self):
+        conn = connect_db()
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT id FROM products ORDER BY id ASC")
+        ids = cursor.fetchall()
+
+        conn.close()
+
+        expected_id = 1
+
+        for row in ids:
+            current_id = int(row[0])
+            if current_id != expected_id:
+                return expected_id
+            expected_id += 1
+
+        return expected_id
 
     def add_product(self):
+        product_id = self.get_next_id()
         name = self.name_entry.get()
         stock = self.stock_entry.get()
         unit = self.unit_entry.get()
 
-        if not name or not stock or not unit:
+        if product_id == "" or name == "" or stock == "" or unit == "":
             messagebox.showerror("Error", "Please fill in all fields")
-            return
-
-        try:
-            stock = float(stock)
-        except ValueError:
-            messagebox.showerror("Error", "Stock must be a number")
             return
 
         conn = connect_db()
         cursor = conn.cursor()
 
+        cursor.execute("SELECT * FROM ingredients WHERE name=?", (name,))
+        existing = cursor.fetchone()
+
+        if existing:
+            messagebox.showerror("Error", f"Ingredient {name} already exists")
+            conn.close()
+            return
+        
         cursor.execute("INSERT INTO ingredients (name, stock, unit) VALUES (?, ?, ?)",
                        (name, stock, unit))
         conn.commit()
@@ -246,9 +292,15 @@ class EditProductWindow2:
         self.stock_entry.pack(pady=5)
 
         # Unit Label and Entry
-        tk.Label(root, text="New Unit:").pack(pady=5)
-        self.unit_entry = tk.Entry(root, width=30)
+        self.unit_entry = ttk.Combobox(
+            root,
+            values=["grams", "pcs", "slices", "ml", "tsp"],
+            state="readonly",
+            width=30
+        )
         self.unit_entry.pack(pady=5)
+
+        self.unit_entry.current(0)
 
         # Update Button
         tk.Button(root, text="Update Ingredient", command=self.update_product).pack(pady=20)
@@ -259,27 +311,42 @@ class EditProductWindow2:
         stock = self.stock_entry.get()
         unit = self.unit_entry.get()
 
-        if not id_val or not name or not stock or not unit:
-            messagebox.showerror("Error", "Please fill in all fields")
-            return
-
-        try:
-            stock = float(stock)
-        except ValueError:
-            messagebox.showerror("Error", "Stock must be a number")
+        if not id_val:
+            messagebox.showerror("Error", "Please enter an Ingredient ID")
             return
 
         conn = connect_db()
         cursor = conn.cursor()
 
-        cursor.execute("SELECT * FROM ingredients WHERE id=?", (id_val,))
-        if not cursor.fetchone():
+        # Fetch existing values
+        cursor.execute("SELECT name, stock, unit FROM ingredients WHERE id=?", (id_val,))
+        result = cursor.fetchone()
+        if not result:
             messagebox.showerror("Error", "Ingredient ID not found")
             conn.close()
             return
 
-        cursor.execute("UPDATE ingredients SET name=?, stock=?, unit=? WHERE id=?",
-                       (name, stock, unit, id_val))
+        current_name, current_stock, current_unit = result
+
+        # Only update fields if the user provided input
+        name = name if name.strip() else current_name
+        unit = unit if unit.strip() else current_unit
+
+        # Handle stock separately to ensure it's a number
+        if stock.strip():
+            try:
+                stock = float(stock)
+            except ValueError:
+                messagebox.showerror("Error", "Stock must be a number")
+                conn.close()
+                return
+        else:
+            stock = current_stock
+
+        cursor.execute(
+            "UPDATE ingredients SET name=?, stock=?, unit=? WHERE id=?",
+            (name, stock, unit, id_val)
+        )
         conn.commit()
         conn.close()
 
