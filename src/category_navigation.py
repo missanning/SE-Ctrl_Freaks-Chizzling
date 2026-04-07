@@ -75,9 +75,12 @@ class CategoryNavigation:
             activeforeground="white",
             relief="raised",
             cursor="hand2",
-            width=15
+            font=("Arial", 12, "bold"),
+            width=18,
+            height=2,
+            bd=3
         )
-        cancel_btn.grid(row=0, column=5, padx=10)
+        cancel_btn.grid(row=0, column=5, padx=10, pady=5)
 
         # Set default category
         self.set_active_category("all")
