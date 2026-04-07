@@ -160,12 +160,12 @@ class ProductDisplay:
             
             # Product name
             name_label = tk.Label(product_item, text=product[1], bg="#FFFFFF", 
-                                font=("Arial", 8), wraplength=195, justify="center")
+                                font=("Arial", 10, "bold"), wraplength=195, justify="center")
             name_label.pack(pady=(0,5))
             
             # Price
             price_label = tk.Label(product_item, text=f"₱{product[2]:.2f}", bg="#FFFFFF", 
-                                 font=("Arial", 8, "bold"), fg="#FF6600")
+                                 font=("Arial", 12, "bold"), fg="#FF6600")
             price_label.pack(pady=(0,5))
             
             # Click handling
