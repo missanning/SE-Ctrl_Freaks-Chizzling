@@ -8,6 +8,7 @@ import plotly.express as px
 from plotly.offline import plot
 import webbrowser
 import tempfile
+import subprocess
 
 def connect_db():
     db_path = os.path.join(os.path.dirname(__file__), "sales_inventory.db")
@@ -43,7 +44,7 @@ class Dashboard:
         button_frame = tk.Frame(main_container, bg="#FAF3E1", height=80)
         button_frame.grid(row=1, column=0, sticky="ew", padx=20, pady=10)
         button_frame.grid_propagate(False)
-        button_frame.grid_columnconfigure((0,1,2,3,4), weight=1)
+        button_frame.grid_columnconfigure((0,1,2,3,4,5), weight=1)
         
         tk.Button(button_frame, text="Daily Sales", command=self.show_daily_sales,
                  bg="#28A745", fg="white", font=("Arial", 12, "bold"), height=2).grid(row=0, column=0, sticky="ew", padx=3)
@@ -57,14 +58,26 @@ class Dashboard:
         tk.Button(button_frame, text="Revenue Analysis", command=self.show_revenue_analysis,
                  bg="#17A2B8", fg="white", font=("Arial", 12, "bold"), height=2).grid(row=0, column=3, sticky="ew", padx=3)
         
+        tk.Button(button_frame, text="View Transactions", command=self.open_transaction_analytics,
+                 bg="#6F42C1", fg="white", font=("Arial", 12, "bold"), height=2).grid(row=0, column=4, sticky="ew", padx=3)
+        
         tk.Button(button_frame, text="Close", command=self.root.destroy,
-                 bg="#DC3545", fg="white", font=("Arial", 12, "bold"), height=2).grid(row=0, column=4, sticky="ew", padx=3)
+                 bg="#DC3545", fg="white", font=("Arial", 12, "bold"), height=2).grid(row=0, column=5, sticky="ew", padx=3)
         
         # Content Frame
         self.content_frame = tk.Frame(main_container, bg="#FFFFFF", bd=2, relief="raised")
         self.content_frame.grid(row=2, column=0, sticky="nsew", padx=20, pady=(0, 20))
         self.content_frame.grid_rowconfigure(0, weight=1)
         self.content_frame.grid_columnconfigure(0, weight=1)
+    
+    def open_transaction_analytics(self):
+        """Open transaction analytics in a new window"""
+        try:
+            # Launch the transaction analytics app as a separate process
+            subprocess.Popen(["python", "transaction_analytics_app.py"], 
+                           cwd=os.path.dirname(__file__))
+        except Exception as e:
+            print(f"Error opening transaction analytics: {e}")
     
     def clear_content(self):
         for widget in self.content_frame.winfo_children():
