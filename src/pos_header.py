@@ -1,5 +1,6 @@
 import tkinter as tk
 import os
+import subprocess
 try:
     from PIL import Image, ImageTk
 except ImportError:
@@ -15,6 +16,17 @@ class POSHeader:
     def __init__(self, parent):
         self.parent = parent
         self.create_header()
+    
+    def logout_and_redirect(self):
+        """Logout and redirect to login page"""
+        try:
+            # Close current window
+            self.parent.destroy()
+            # Launch login page
+            subprocess.Popen(["python", "LoginPage.py"], 
+                           cwd=os.path.dirname(__file__))
+        except Exception as e:
+            print(f"Error during logout: {e}")
     
     def create_header(self):
         # Shadow frame
@@ -49,11 +61,11 @@ class POSHeader:
             header_label = tk.Label(header, image=self.header_img, borderwidth=0, relief="solid")
             header_label.pack(fill="both", expand=True)
             
-        # Exit button
+        # Logout button
         logout_btn = tk.Button(
             header_label,
-            text="⎋ EXIT",
-            command=self.parent.destroy,
+            text="⎋ LOGOUT",
+            command=self.logout_and_redirect,
             bg="#FF6600",
             fg="white",
             activebackground="#FF8844",
