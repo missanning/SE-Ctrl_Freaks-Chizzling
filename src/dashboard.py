@@ -61,7 +61,7 @@ class Dashboard:
         tk.Button(button_frame, text="View Transactions", command=self.open_transaction_analytics,
                  bg="#6F42C1", fg="white", font=("Arial", 12, "bold"), height=2).grid(row=0, column=4, sticky="ew", padx=3)
         
-        tk.Button(button_frame, text="Close", command=self.root.destroy,
+        tk.Button(button_frame, text="Logout", command=self.logout_and_redirect,
                  bg="#DC3545", fg="white", font=("Arial", 12, "bold"), height=2).grid(row=0, column=5, sticky="ew", padx=3)
         
         # Content Frame
@@ -78,6 +78,17 @@ class Dashboard:
                            cwd=os.path.dirname(__file__))
         except Exception as e:
             print(f"Error opening transaction analytics: {e}")
+    
+    def logout_and_redirect(self):
+        """Logout and redirect to login page"""
+        try:
+            # Close current window
+            self.root.destroy()
+            # Launch login page
+            subprocess.Popen(["python", "LoginPage.py"], 
+                           cwd=os.path.dirname(__file__))
+        except Exception as e:
+            print(f"Error during logout: {e}")
     
     def clear_content(self):
         for widget in self.content_frame.winfo_children():
