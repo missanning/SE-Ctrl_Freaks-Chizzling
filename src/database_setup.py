@@ -387,31 +387,6 @@ def prompt_success():
     print("DATABASE SETUP COMPLETED SUCCESSFULLY!")
     print("="*50)
     print("\nDatabase Summary:")
-    
-    conn = connect_db()
-    cursor = conn.cursor()
-    
-    # Count records
-    cursor.execute("SELECT COUNT(*) FROM users")
-    user_count = cursor.fetchone()[0]
-    
-    cursor.execute("SELECT COUNT(*) FROM products")
-    product_count = cursor.fetchone()[0]
-    
-    cursor.execute("SELECT COUNT(*) FROM ingredients")
-    ingredient_count = cursor.fetchone()[0]
-    
-    cursor.execute("SELECT COUNT(*) FROM recipe_ingredients")
-    recipe_count = cursor.fetchone()[0]
-    
-    print(f"Users: {user_count}")
-    print(f"Products: {product_count}")
-    print(f"Ingredients: {ingredient_count}")
-    print(f"Recipes: {recipe_count}")
-    
-    conn.close()
-    print("\nReady for Chizzling POS operations!")
-
 
 if __name__ == "__main__":
     create_tables()
