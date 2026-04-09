@@ -16,16 +16,19 @@ class ArchiveFeature:
         
         self.load_products()
 
+        self.reload_button = tk.Button(root, text="Reload", width=27, command=self.load_products)
+        self.reload_button.pack(pady=10)
+        
         self.search_entry = tk.Entry(root, width=30)
         self.search_entry.pack(pady=20)
 
-        self.search_button = tk.Button(root, text="Search", width=27)
+        self.search_button = tk.Button(root, text="Search", width=27, command=self.search_product)
         self.search_button.pack(pady=10)
 
         self.unarchive_entry = tk.Entry(root, width=30)
         self.unarchive_entry.pack(pady=20)
 
-        self.unarchive_button = tk.Button(root, text="Unarchive", width=27)
+        self.unarchive_button = tk.Button(root, text="Unarchive", width=27, command=self.unarchive_product)
         self.unarchive_button.pack(pady=10)
 
         self.delete_entry = tk.Entry(root, width=30)
@@ -59,6 +62,68 @@ class ArchiveFeature:
             self.tree.insert("", tk.END, values=row)
 
         conn.close()
+
+    def search_product(self):
+        keyword = self.search_entry.get()
+
+        conn = connect_db()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+        SELECT * FROM product_archive
+        WHERE id LIKE ? OR name LIKE ?
+        """, ('%' + keyword + '%', '%' + keyword + '%'))
+
+        rows = cursor.fetchall()
+
+        self.tree.delete(*self.tree.get_children())
+
+        for row in rows:
+            self.tree.insert("", tk.END, values=row)
+
+        conn.close()
+
+    def unarchive_product(self):
+        keyword = self.unarchive_entry.get()
+
+        if keyword == "":
+            messagebox.showwarning("Warning", "Enter Product ID or Name")
+            return
+        
+        conn = connect_db()
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT * FROM product_archive WHERE id=? OR name=?", (keyword, keyword))
+        result = cursor.fetchone()
+
+        if not result:
+            messagebox.showerror("Error", f"Product with ID or Name '{keyword}' not found in archive")
+            conn.close()
+            return
+        
+        decide = messagebox.askyesno(
+            "Confirm Unarchive",
+            f"Are you sure you want to unarchive product with ID or Name '{keyword}'?"
+        )
+
+        if not decide:
+            conn.close()
+            return
+        
+        cursor.execute("""
+        INSERT INTO products (name, price, stock)
+        SELECT name, price, stock FROM product_archive WHERE id=? OR name=?
+        """, (keyword, keyword))
+
+        cursor.execute("DELETE FROM product_archive WHERE id=? OR name=?", (keyword, keyword))
+
+        conn.commit()
+        conn.close()
+
+        self.unarchive_entry.delete(0, tk.END)
+        messagebox.showinfo("Success", f"Product with ID or Name '{keyword}' has been unarchived")
+        self.load_products()
+
 if __name__ == "__main__":
     root = tk.Tk()
     app = ArchiveFeature(root)
