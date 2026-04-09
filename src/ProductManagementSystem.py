@@ -69,7 +69,7 @@ class ProductManagementSystem:
         self.archive_entry = tk.Entry(root, width=30)
         self.archive_entry.pack(pady=20)
 
-        self.archive_button = tk.Button(root, text="Archive Product", width=22, command=self.archive_product)
+        self.archive_button = tk.Button(root, text="Archive Product", width=22, command=self.archive_products)
         self.archive_button.pack(pady=5)
 
         self.go_to_archive_button = tk.Button(root, text="Go to Archive", width=18, command=self.OpenArchiveFeature)
@@ -98,7 +98,7 @@ class ProductManagementSystem:
 
         conn.close()
 
-    def archive_product(self):
+    def archive_products(self):
         keyword = self.archive_entry.get()
 
         if keyword == "":
