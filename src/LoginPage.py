@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
 from database_setup import connect_db
+from ProductManagementSystem import ProductManagementSystem
 
 class MainApp:
     def __init__(self, root):
