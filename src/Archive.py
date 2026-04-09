@@ -28,7 +28,7 @@ class ArchiveFeature:
         self.unarchive_entry = tk.Entry(root, width=30)
         self.unarchive_entry.pack(pady=20)
 
-        self.unarchive_button = tk.Button(root, text="Unarchive", width=27, command=self.unarchive_product)
+        self.unarchive_button = tk.Button(root, text="Unarchive", width=27, command=self.unarchive_products)
         self.unarchive_button.pack(pady=10)
 
         self.delete_entry = tk.Entry(root, width=30)
@@ -83,7 +83,7 @@ class ArchiveFeature:
 
         conn.close()
 
-    def unarchive_product(self):
+    def unarchive_products(self):
         keyword = self.unarchive_entry.get()
 
         if keyword == "":
