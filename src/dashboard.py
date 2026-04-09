@@ -395,6 +395,9 @@ class Dashboard:
         
         # Create interactive Plotly charts
         self.create_plotly_charts(products, quantities, sales, title)
+        
+        # Add time-series chart button
+        self.add_time_series_button(period)
     
     def create_plotly_charts(self, products, quantities, sales, title):
         # Create subplots using Plotly
@@ -652,6 +655,9 @@ class Dashboard:
         
         # Create revenue chart
         self.create_revenue_chart(results, title)
+        
+        # Add time-series chart for revenue
+        self.add_revenue_time_series_button(period)
     
     def create_revenue_summary(self, results, title):
         # Summary cards frame
@@ -930,3 +936,290 @@ if __name__ == "__main__":
     root = tk.Tk()
     app = Dashboard(root)
     root.mainloop()
+    def add_time_series_button(self, period):
+        """Add button to view time-series sales progression chart"""
+        button_container = tk.Frame(self.graph_frame, bg="#FFFFFF")
+        button_container.pack(pady=10, fill="x")
+        
+        time_series_button = tk.Button(
+            button_container,
+            text="📈 View Sales Progression Chart",
+            command=lambda: self.open_sales_time_series(period),
+            bg="#28A745",
+            fg="white",
+            font=("Arial", 12, "bold"),
+            width=30,
+            height=2,
+            relief="raised",
+            bd=2
+        )
+        time_series_button.pack()
+    
+    def add_revenue_time_series_button(self, period):
+        """Add button to view revenue time-series chart"""
+        button_container = tk.Frame(self.revenue_frame, bg="#FFFFFF")
+        button_container.pack(pady=10, fill="x")
+        
+        time_series_button = tk.Button(
+            button_container,
+            text="📈 View Revenue Progression Chart",
+            command=lambda: self.open_revenue_time_series(period),
+            bg="#28A745",
+            fg="white",
+            font=("Arial", 12, "bold"),
+            width=30,
+            height=2,
+            relief="raised",
+            bd=2
+        )
+        time_series_button.pack()
+    
+    def open_sales_time_series(self, period):
+        """Create and display sales progression time-series chart"""
+        conn = connect_db()
+        cursor = conn.cursor()
+        
+        if period == "daily":
+            dates = [(datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(6, -1, -1)]
+            title = "Daily Sales Progression (Last 7 Days)"
+        else:
+            dates = []
+            for i in range(3, -1, -1):
+                week_start = datetime.now() - timedelta(weeks=i, days=datetime.now().weekday())
+                week_end = week_start + timedelta(days=6)
+                dates.append((week_start.strftime("%Y-%m-%d"), week_end.strftime("%Y-%m-%d"), f"Week {4-i}"))
+            title = "Weekly Sales Progression (Last 4 Weeks)"
+        
+        sales_data = []
+        transaction_data = []
+        labels = []
+        
+        if period == "daily":
+            for date in dates:
+                cursor.execute("""
+                    SELECT COUNT(*), COALESCE(SUM(total), 0)
+                    FROM transactions
+                    WHERE DATE(date) = ?
+                """, (date,))
+                result = cursor.fetchone()
+                transaction_data.append(result[0] if result[0] else 0)
+                sales_data.append(result[1] if result[1] else 0)
+                labels.append(datetime.strptime(date, "%Y-%m-%d").strftime("%m/%d"))
+        else:
+            for start_date, end_date, week_label in dates:
+                cursor.execute("""
+                    SELECT COUNT(*), COALESCE(SUM(total), 0)
+                    FROM transactions
+                    WHERE DATE(date) BETWEEN ? AND ?
+                """, (start_date, end_date))
+                result = cursor.fetchone()
+                transaction_data.append(result[0] if result[0] else 0)
+                sales_data.append(result[1] if result[1] else 0)
+                labels.append(week_label)
+        
+        conn.close()
+        
+        fig = go.Figure()
+        
+        fig.add_trace(go.Scatter(
+            x=labels,
+            y=sales_data,
+            mode='lines+markers+text',
+            name='Total Sales',
+            line=dict(color='#28A745', width=3),
+            marker=dict(size=8, color='#28A745'),
+            text=[f'₱{s:.0f}' for s in sales_data],
+            textposition='top center',
+            hovertemplate='<b>%{x}</b><br>Sales: ₱%{y:.2f}<extra></extra>'
+        ))
+        
+        fig.add_trace(go.Scatter(
+            x=labels,
+            y=transaction_data,
+            mode='lines+markers+text',
+            name='Transactions',
+            line=dict(color='#007BFF', width=3),
+            marker=dict(size=8, color='#007BFF'),
+            text=[str(t) for t in transaction_data],
+            textposition='bottom center',
+            yaxis='y2',
+            hovertemplate='<b>%{x}</b><br>Transactions: %{y}<extra></extra>'
+        ))
+        
+        fig.update_layout(
+            title={
+                'text': f'<b>{title}</b>',
+                'x': 0.5,
+                'xanchor': 'center',
+                'font': {'size': 18, 'color': '#333'}
+            },
+            xaxis_title='Time Period',
+            yaxis=dict(title='Sales (₱)', side='left', color='#28A745'),
+            yaxis2=dict(title='Number of Transactions', side='right', overlaying='y', color='#007BFF'),
+            height=500,
+            width=min(int(self.root.winfo_screenwidth() * 0.8), 1200),
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            font={'family': 'Arial', 'size': 12},
+            legend=dict(x=0.02, y=0.98),
+            hovermode='x unified'
+        )
+        
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False, encoding='utf-8') as f:
+            html_content = plot(fig, output_type='div', include_plotlyjs=True)
+            full_html = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Chizzling POS - Sales Progression</title>
+                <style>
+                    body {{ font-family: Arial, sans-serif; margin: 20px; background-color: #FAF3E1; }}
+                    .header {{ background-color: #28A745; color: white; padding: 20px; text-align: center; margin-bottom: 20px; }}
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1>Chizzling POS - Sales Progression</h1>
+                    <p>Time-Series Sales Analysis</p>
+                </div>
+                {html_content}
+            </body>
+            </html>
+            """
+            f.write(full_html)
+            temp_path = f.name
+        
+        webbrowser.open(f'file://{temp_path}')
+    
+    def open_revenue_time_series(self, period):
+        """Create and display revenue progression time-series chart"""
+        conn = connect_db()
+        cursor = conn.cursor()
+        
+        if period == "daily":
+            dates = [(datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(6, -1, -1)]
+            title = "Daily Revenue Progression (Last 7 Days)"
+        elif period == "weekly":
+            dates = []
+            for i in range(3, -1, -1):
+                week_start = datetime.now() - timedelta(weeks=i, days=datetime.now().weekday())
+                week_end = week_start + timedelta(days=6)
+                dates.append((week_start.strftime("%Y-%m-%d"), week_end.strftime("%Y-%m-%d"), f"Week {4-i}"))
+            title = "Weekly Revenue Progression (Last 4 Weeks)"
+        else:
+            dates = []
+            for i in range(5, -1, -1):
+                month_date = datetime.now().replace(day=1) - timedelta(days=32*i)
+                month_date = month_date.replace(day=1)
+                if month_date.month == 12:
+                    next_month = month_date.replace(year=month_date.year+1, month=1)
+                else:
+                    next_month = month_date.replace(month=month_date.month+1)
+                month_end = next_month - timedelta(days=1)
+                dates.append((month_date.strftime("%Y-%m-%d"), month_end.strftime("%Y-%m-%d"), month_date.strftime("%b %Y")))
+            title = "Monthly Revenue Progression (Last 6 Months)"
+        
+        revenue_data = []
+        quantity_data = []
+        labels = []
+        
+        if period == "daily":
+            for date in dates:
+                cursor.execute("""
+                    SELECT COALESCE(SUM(ti.subtotal), 0), COALESCE(SUM(ti.quantity), 0)
+                    FROM transaction_items ti
+                    JOIN transactions t ON ti.transaction_id = t.id
+                    WHERE DATE(t.date) = ?
+                """, (date,))
+                result = cursor.fetchone()
+                revenue_data.append(result[0] if result[0] else 0)
+                quantity_data.append(result[1] if result[1] else 0)
+                labels.append(datetime.strptime(date, "%Y-%m-%d").strftime("%m/%d"))
+        else:
+            for start_date, end_date, period_label in dates:
+                cursor.execute("""
+                    SELECT COALESCE(SUM(ti.subtotal), 0), COALESCE(SUM(ti.quantity), 0)
+                    FROM transaction_items ti
+                    JOIN transactions t ON ti.transaction_id = t.id
+                    WHERE DATE(t.date) BETWEEN ? AND ?
+                """, (start_date, end_date))
+                result = cursor.fetchone()
+                revenue_data.append(result[0] if result[0] else 0)
+                quantity_data.append(result[1] if result[1] else 0)
+                labels.append(period_label)
+        
+        conn.close()
+        
+        fig = go.Figure()
+        
+        fig.add_trace(go.Scatter(
+            x=labels,
+            y=revenue_data,
+            mode='lines+markers+text',
+            name='Total Revenue',
+            line=dict(color='#17A2B8', width=3),
+            marker=dict(size=8, color='#17A2B8'),
+            text=[f'₱{r:.0f}' for r in revenue_data],
+            textposition='top center',
+            hovertemplate='<b>%{x}</b><br>Revenue: ₱%{y:.2f}<extra></extra>'
+        ))
+        
+        fig.add_trace(go.Scatter(
+            x=labels,
+            y=quantity_data,
+            mode='lines+markers+text',
+            name='Items Sold',
+            line=dict(color='#FFC107', width=3),
+            marker=dict(size=8, color='#FFC107'),
+            text=[str(int(q)) for q in quantity_data],
+            textposition='bottom center',
+            yaxis='y2',
+            hovertemplate='<b>%{x}</b><br>Items Sold: %{y}<extra></extra>'
+        ))
+        
+        fig.update_layout(
+            title={
+                'text': f'<b>{title}</b>',
+                'x': 0.5,
+                'xanchor': 'center',
+                'font': {'size': 18, 'color': '#333'}
+            },
+            xaxis_title='Time Period',
+            yaxis=dict(title='Revenue (₱)', side='left', color='#17A2B8'),
+            yaxis2=dict(title='Items Sold', side='right', overlaying='y', color='#FFC107'),
+            height=500,
+            width=min(int(self.root.winfo_screenwidth() * 0.8), 1200),
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            font={'family': 'Arial', 'size': 12},
+            legend=dict(x=0.02, y=0.98),
+            hovermode='x unified'
+        )
+        
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False, encoding='utf-8') as f:
+            html_content = plot(fig, output_type='div', include_plotlyjs=True)
+            full_html = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Chizzling POS - Revenue Progression</title>
+                <style>
+                    body {{ font-family: Arial, sans-serif; margin: 20px; background-color: #FAF3E1; }}
+                    .header {{ background-color: #17A2B8; color: white; padding: 20px; text-align: center; margin-bottom: 20px; }}
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1>Chizzling POS - Revenue Progression</h1>
+                    <p>Time-Series Revenue Analysis</p>
+                </div>
+                {html_content}
+            </body>
+            </html>
+            """
+            f.write(full_html)
+            temp_path = f.name
+        
+        webbrowser.open(f'file://{temp_path}')
