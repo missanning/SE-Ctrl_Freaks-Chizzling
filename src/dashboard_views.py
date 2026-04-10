@@ -34,9 +34,10 @@ class DashboardViews:
         today = datetime.now().strftime("%Y-%m-%d")
 
         conn = connect_db()
-        cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*), SUM(total) FROM transactions WHERE date LIKE ?", (today + '%',))
-        r = cursor.fetchone()
+        with conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*), SUM(total) FROM transactions WHERE date LIKE ?", (today + '%',))
+            r = cursor.fetchone()
         conn.close()
 
         count = r[0] or 0
@@ -74,10 +75,11 @@ class DashboardViews:
         date_to = sunday.strftime("%Y-%m-%d")
 
         conn = connect_db()
-        cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*), SUM(total) FROM transactions WHERE DATE(date) BETWEEN ? AND ?",
-                       (date_from, date_to))
-        r = cursor.fetchone()
+        with conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*), SUM(total) FROM transactions WHERE DATE(date) BETWEEN ? AND ?",
+                           (date_from, date_to))
+            r = cursor.fetchone()
         count = r[0] or 0
         total = r[1] or 0.0
         days_elapsed = (today - monday).days + 1
@@ -106,11 +108,14 @@ class DashboardViews:
         tk.Label(perf, text=msg, font=("Arial", 11), bg="#F8F9FA", justify="center").pack(pady=(0, 10))
 
         # Daily breakdown table
-        cursor.execute("""SELECT DATE(date), COUNT(*), SUM(total) FROM transactions
-                          WHERE DATE(date) BETWEEN ? AND ?
-                          GROUP BY DATE(date) ORDER BY DATE(date) DESC""", (date_from, date_to))
-        daily_data = cursor.fetchall()
-        conn.close()
+        conn2 = connect_db()
+        with conn2:
+            cursor2 = conn2.cursor()
+            cursor2.execute("""SELECT DATE(date), COUNT(*), SUM(total) FROM transactions
+                              WHERE DATE(date) BETWEEN ? AND ?
+                              GROUP BY DATE(date) ORDER BY DATE(date) DESC""", (date_from, date_to))
+            daily_data = cursor2.fetchall()
+        conn2.close()
 
         breakdown = tk.Frame(self.content_frame, bg="#FFFFFF")
         breakdown.pack(pady=15, padx=20, fill="both", expand=True)
@@ -155,14 +160,15 @@ class DashboardViews:
 
         date_from, date_to, title = get_date_range(period)
         conn = connect_db()
-        cursor = conn.cursor()
-        cursor.execute("""SELECT p.name, SUM(ti.quantity), SUM(ti.subtotal)
-                          FROM transaction_items ti
-                          JOIN products p ON ti.product_id=p.id
-                          JOIN transactions t ON ti.transaction_id=t.id
-                          WHERE DATE(t.date) BETWEEN ? AND ?
-                          GROUP BY p.id, p.name ORDER BY 2 DESC LIMIT 5""", (date_from, date_to))
-        results = cursor.fetchall()
+        with conn:
+            cursor = conn.cursor()
+            cursor.execute("""SELECT p.name, SUM(ti.quantity), SUM(ti.subtotal)
+                              FROM transaction_items ti
+                              JOIN products p ON ti.product_id=p.id
+                              JOIN transactions t ON ti.transaction_id=t.id
+                              WHERE DATE(t.date) BETWEEN ? AND ?
+                              GROUP BY p.id, p.name ORDER BY 2 DESC LIMIT 5""", (date_from, date_to))
+            results = cursor.fetchall()
         conn.close()
 
         if not results:
@@ -241,16 +247,17 @@ class DashboardViews:
 
         date_from, date_to, title = get_date_range(period)
         conn = connect_db()
-        cursor = conn.cursor()
-        cursor.execute("""SELECT p.name, p.price, SUM(ti.quantity), SUM(ti.subtotal),
-                                 AVG(p.price), (SUM(ti.subtotal)/SUM(ti.quantity))
-                          FROM transaction_items ti
-                          JOIN products p ON ti.product_id=p.id
-                          JOIN transactions t ON ti.transaction_id=t.id
-                          WHERE DATE(t.date) BETWEEN ? AND ?
-                          GROUP BY p.id, p.name, p.price HAVING SUM(ti.quantity)>0
-                          ORDER BY 4 DESC""", (date_from, date_to))
-        results = cursor.fetchall()
+        with conn:
+            cursor = conn.cursor()
+            cursor.execute("""SELECT p.name, p.price, SUM(ti.quantity), SUM(ti.subtotal),
+                                     AVG(p.price), (SUM(ti.subtotal)/SUM(ti.quantity))
+                              FROM transaction_items ti
+                              JOIN products p ON ti.product_id=p.id
+                              JOIN transactions t ON ti.transaction_id=t.id
+                              WHERE DATE(t.date) BETWEEN ? AND ?
+                              GROUP BY p.id, p.name, p.price HAVING SUM(ti.quantity)>0
+                              ORDER BY 4 DESC""", (date_from, date_to))
+            results = cursor.fetchall()
         conn.close()
 
         if not results:

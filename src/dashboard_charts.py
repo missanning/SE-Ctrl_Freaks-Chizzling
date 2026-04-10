@@ -155,24 +155,25 @@ def _build_period_dates(period):
 
 def open_sales_time_series(period, screen_width):
     conn = connect_db()
-    cursor = conn.cursor()
-    mode, dates, title = _build_period_dates(period if period in ("daily", "weekly") else "weekly")
+    with conn:
+        cursor = conn.cursor()
+        mode, dates, title = _build_period_dates(period if period in ("daily", "weekly") else "weekly")
 
-    sales_data, transaction_data, labels = [], [], []
-    if mode == "daily":
-        for date in dates:
-            cursor.execute("SELECT COUNT(*), COALESCE(SUM(total),0) FROM transactions WHERE DATE(date)=?", (date,))
-            r = cursor.fetchone()
-            transaction_data.append(r[0] or 0)
-            sales_data.append(r[1] or 0)
-            labels.append(datetime.strptime(date, "%Y-%m-%d").strftime("%m/%d"))
-    else:
-        for start, end, label in dates:
-            cursor.execute("SELECT COUNT(*), COALESCE(SUM(total),0) FROM transactions WHERE DATE(date) BETWEEN ? AND ?", (start, end))
-            r = cursor.fetchone()
-            transaction_data.append(r[0] or 0)
-            sales_data.append(r[1] or 0)
-            labels.append(label)
+        sales_data, transaction_data, labels = [], [], []
+        if mode == "daily":
+            for date in dates:
+                cursor.execute("SELECT COUNT(*), COALESCE(SUM(total),0) FROM transactions WHERE DATE(date)=?", (date,))
+                r = cursor.fetchone()
+                transaction_data.append(r[0] or 0)
+                sales_data.append(r[1] or 0)
+                labels.append(datetime.fromisoformat(date).strftime("%m/%d"))
+        else:
+            for start, end, label in dates:
+                cursor.execute("SELECT COUNT(*), COALESCE(SUM(total),0) FROM transactions WHERE DATE(date) BETWEEN ? AND ?", (start, end))
+                r = cursor.fetchone()
+                transaction_data.append(r[0] or 0)
+                sales_data.append(r[1] or 0)
+                labels.append(label)
     conn.close()
 
     fig = go.Figure()
@@ -204,28 +205,29 @@ def open_sales_time_series(period, screen_width):
 
 def open_revenue_time_series(period, screen_width):
     conn = connect_db()
-    cursor = conn.cursor()
-    mode, dates, title = _build_period_dates(period)
+    with conn:
+        cursor = conn.cursor()
+        mode, dates, title = _build_period_dates(period)
 
-    revenue_data, quantity_data, labels = [], [], []
-    if mode == "daily":
-        for date in dates:
-            cursor.execute("""SELECT COALESCE(SUM(ti.subtotal),0), COALESCE(SUM(ti.quantity),0)
-                              FROM transaction_items ti JOIN transactions t ON ti.transaction_id=t.id
-                              WHERE DATE(t.date)=?""", (date,))
-            r = cursor.fetchone()
-            revenue_data.append(r[0] or 0)
-            quantity_data.append(r[1] or 0)
-            labels.append(datetime.strptime(date, "%Y-%m-%d").strftime("%m/%d"))
-    else:
-        for start, end, label in dates:
-            cursor.execute("""SELECT COALESCE(SUM(ti.subtotal),0), COALESCE(SUM(ti.quantity),0)
-                              FROM transaction_items ti JOIN transactions t ON ti.transaction_id=t.id
-                              WHERE DATE(t.date) BETWEEN ? AND ?""", (start, end))
-            r = cursor.fetchone()
-            revenue_data.append(r[0] or 0)
-            quantity_data.append(r[1] or 0)
-            labels.append(label)
+        revenue_data, quantity_data, labels = [], [], []
+        if mode == "daily":
+            for date in dates:
+                cursor.execute("""SELECT COALESCE(SUM(ti.subtotal),0), COALESCE(SUM(ti.quantity),0)
+                                  FROM transaction_items ti JOIN transactions t ON ti.transaction_id=t.id
+                                  WHERE DATE(t.date)=?""", (date,))
+                r = cursor.fetchone()
+                revenue_data.append(r[0] or 0)
+                quantity_data.append(r[1] or 0)
+                labels.append(datetime.fromisoformat(date).strftime("%m/%d"))
+        else:
+            for start, end, label in dates:
+                cursor.execute("""SELECT COALESCE(SUM(ti.subtotal),0), COALESCE(SUM(ti.quantity),0)
+                                  FROM transaction_items ti JOIN transactions t ON ti.transaction_id=t.id
+                                  WHERE DATE(t.date) BETWEEN ? AND ?""", (start, end))
+                r = cursor.fetchone()
+                revenue_data.append(r[0] or 0)
+                quantity_data.append(r[1] or 0)
+                labels.append(label)
     conn.close()
 
     fig = go.Figure()

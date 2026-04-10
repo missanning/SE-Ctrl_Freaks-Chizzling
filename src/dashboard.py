@@ -1,5 +1,6 @@
 import tkinter as tk
 import os
+import sys
 import subprocess
 from dashboard_views import DashboardViews
 
@@ -51,7 +52,7 @@ class Dashboard(DashboardViews):
 
     def open_transaction_analytics(self):
         try:
-            subprocess.Popen(["python", "transaction_analytics_app.py"],
+            subprocess.Popen([sys.executable, "transaction_analytics_app.py"],
                              cwd=os.path.dirname(__file__))
         except Exception as e:
             print(f"Error opening transaction analytics: {e}")
@@ -59,7 +60,7 @@ class Dashboard(DashboardViews):
     def logout_and_redirect(self):
         try:
             self.root.destroy()
-            subprocess.Popen(["python", "LoginPage.py"],
+            subprocess.Popen([sys.executable, "LoginPage.py"],
                              cwd=os.path.dirname(__file__))
         except Exception as e:
             print(f"Error during logout: {e}")
