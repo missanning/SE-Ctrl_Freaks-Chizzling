@@ -4,76 +4,91 @@ from database_setup import connect_db
 from tkinter import messagebox
 from Ingredients_Table import IngredientsTableWindow
 from Archive import ArchiveFeature
-
-# Main Window
+from LoginPage import MainApp
+"""
+Product Management System, Ingredients table, archive fixed GUI and added features:
+- Added category field to products
+- Fixed add and update bugs
+- Updated GUI for better user experience"""
 class ProductManagementSystem:
     def __init__(self, root):
         self.root = root
         self.root.title("Product Management System")
-        self.root.geometry("900x750")
+        self.root.geometry("1200x600")
 
-        # Title
+        # TITLE
         tk.Label(root, text="Product Management System",
                  font=("Arial", 18, "bold")).pack(pady=10)
 
-        # Data Table
-        self.tree = ttk.Treeview(root)
+        # MAIN FRAME
+        main_frame = tk.Frame(root)
+        main_frame.pack(fill="both", expand=True)
+
+        # LEFT (TABLE)
+        left_frame = tk.Frame(main_frame)
+        left_frame.grid(row=0, column=0, sticky="nsew")
+
+        # RIGHT (BUTTONS)
+        right_frame = tk.Frame(main_frame)
+        right_frame.grid(row=0, column=1, sticky="ns", padx=10)
+
+        # GRID CONFIG
+        main_frame.grid_columnconfigure(0, weight=3)
+        main_frame.grid_columnconfigure(1, weight=1)
+        main_frame.grid_rowconfigure(0, weight=1)
+
+        self.tree = ttk.Treeview(left_frame)
         self.tree.pack(fill="both", expand=True)
-        
+
         self.load_products()
-        
-        self.ingredients_button = tk.Button(
-            root,
-            text="Manage Ingredients Table",
-            width=22,
-            command=self.OpenIngredientsTableWindow
-        )
-        self.ingredients_button.pack(pady=5)
-        # Search bar
-        self.search_bar = tk.Entry(root, width=24)
+
+        # INGREDIENTS
+        tk.Button(right_frame, text="Manage Ingredients Table", width=22,
+                  command=self.OpenIngredientsTableWindow).pack(pady=5)
+
+        # SEARCH
+        self.search_bar = tk.Entry(right_frame, width=24)
         self.search_bar.pack(pady=5)
 
-        # Search button
-        self.search_button = tk.Button(root, text="Search Product", width=22,
-                                       command=self.search_product)
-        self.search_button.pack(pady=5)
+        tk.Button(right_frame, text="Search Product", width=22,
+                  command=self.search_product).pack(pady=5)
 
-        # Refresh button
-        self.button = tk.Button(root, text="Refresh Products", width=22,
-                                command=self.refresh_products)
-        self.button.pack(pady=5)
+        # REFRESH
+        tk.Button(right_frame, text="Refresh Products", width=22,
+                  command=self.refresh_products).pack(pady=5)
 
-        # Label
-        tk.Label(root, text="Enter Product ID to Delete").pack(pady=5)
+        # DELETE SECTION
+        tk.Label(right_frame, text="Enter Product ID to Delete").pack(pady=5)
 
-        # Frame for entry + button
-        delete_frame = tk.Frame(root)
+        delete_frame = tk.Frame(right_frame)
         delete_frame.pack(pady=5)
 
-        # Entry
         self.entry = tk.Entry(delete_frame, width=15)
         self.entry.pack(side=tk.LEFT, padx=5)
 
-        # Delete Button
-        self.button_delete = tk.Button(delete_frame, text="Delete", command=self.delete_product)
-        self.button_delete.pack(side=tk.LEFT)
+        tk.Button(delete_frame, text="Delete",
+                  command=self.delete_product).pack(side=tk.LEFT)
 
-        # Add Button
-        self.button_add = tk.Button(root, text="Add product", width=22, command=self.OpenAddProductWindow)
-        self.button_add.pack(pady=5)
+        # ADD / EDIT
+        tk.Button(right_frame, text="Add Product", width=22,
+                  command=self.OpenAddProductWindow).pack(pady=5)
 
-        # Edit Button
-        self.button_edit = tk.Button(root, text="Edit Product", width=22, command=self.OpenEditProductWindow)
-        self.button_edit.pack(pady=5)
+        tk.Button(right_frame, text="Edit Product", width=22,
+                  command=self.OpenEditProductWindow).pack(pady=5)
 
-        self.archive_entry = tk.Entry(root, width=30)
-        self.archive_entry.pack(pady=20)
+        # ARCHIVE
+        self.archive_entry = tk.Entry(right_frame, width=24)
+        self.archive_entry.pack(pady=10)
 
-        self.archive_button = tk.Button(root, text="Archive Product", width=22, command=self.archive_products)
-        self.archive_button.pack(pady=5)
+        tk.Button(right_frame, text="Archive Product", width=22,
+                  command=self.archive_products).pack(pady=5)
 
-        self.go_to_archive_button = tk.Button(root, text="Go to Archive", width=18, command=self.OpenArchiveFeature)
-        self.go_to_archive_button.pack(pady=5)
+        tk.Button(right_frame, text="Go to Archive", width=22,
+                  command=self.OpenArchiveFeature).pack(pady=5)
+
+        # LOGOUT
+        tk.Button(right_frame, text="Logout", width=22,
+                  command=self.OpenLoginPage).pack(pady=20)
 
     def load_products(self):
         conn = connect_db()
@@ -91,57 +106,12 @@ class ProductManagementSystem:
 
         for col in column_names:
             self.tree.heading(col, text=col)
-            self.tree.column(col, width=150)
+            self.tree.column(col, width=120)
 
         for row in rows:
             self.tree.insert("", tk.END, values=row)
 
         conn.close()
-
-    def archive_products(self):
-        keyword = self.archive_entry.get()
-
-        if keyword == "":
-            messagebox.showwarning("Error", "Please enter a Product ID or Name to archive")
-            return
-
-        conn = connect_db()
-        cursor = conn.cursor()
-
-        # CHECK IF PRODUCT EXISTS
-        cursor.execute("SELECT * FROM products WHERE id=? OR name=?", (keyword, keyword))
-        result = cursor.fetchone()
-
-        if not result:
-            messagebox.showerror("Error", f"Product with ID or Name '{keyword}' not found")
-            conn.close()
-            return
-
-        # CONFIRM FIRST
-        decide = messagebox.askyesno(
-            "Confirm Archive",
-            f"Are you sure you want to archive product with ID '{keyword}'?"
-        )
-
-        if not decide:
-            conn.close()
-            return
-
-        # ARCHIVE (INSERT INTO ARCHIVE TABLE)
-        cursor.execute("""
-        INSERT INTO product_archive (name, price, stock)
-        SELECT name, price, stock FROM products WHERE id=? OR name=?
-        """, (keyword, keyword))
-
-        # DELETE FROM MAIN TABLE
-        cursor.execute("DELETE FROM products WHERE id=? OR name=?", (keyword, keyword))
-
-        conn.commit()
-        conn.close()
-
-        self.archive_entry.delete(0, tk.END)
-        messagebox.showinfo("Success", "Product archived successfully")
-        self.refresh_products()
 
     def refresh_products(self):
         self.load_products()
@@ -170,18 +140,13 @@ class ProductManagementSystem:
         keyword = self.entry.get()
 
         if keyword == "":
-            messagebox.showerror("Error", "Please enter a Product ID or Name to delete")
+            messagebox.showerror("Error", "Enter ID or Name")
             return
 
         conn = connect_db()
         cursor = conn.cursor()
 
-        # 🔍 CHECK IF PRODUCT EXISTS
-        cursor.execute("""
-        SELECT * FROM products
-        WHERE id = ? OR name = ?
-        """, (keyword, keyword))
-
+        cursor.execute("SELECT * FROM products WHERE id=? OR name=?", (keyword, keyword))
         result = cursor.fetchone()
 
         if not result:
@@ -189,27 +154,55 @@ class ProductManagementSystem:
             conn.close()
             return
 
-        # ✅ CONFIRM FIRST
-        decide = messagebox.askyesno(
-            "Confirm Delete",
-            f"Are you sure you want to delete '{keyword}'?"
-        )
-
-        if not decide:
+        confirm = messagebox.askyesno("Confirm", "Delete this product?")
+        if not confirm:
             conn.close()
             return
 
-        # 🗑️ DELETE ONLY AFTER CONFIRMATION
-        cursor.execute("""
-        DELETE FROM products
-        WHERE id = ? OR name = ?
-        """, (keyword, keyword))
+        cursor.execute("DELETE FROM products WHERE id=? OR name=?", (keyword, keyword))
 
         conn.commit()
         conn.close()
 
         self.entry.delete(0, tk.END)
-        messagebox.showinfo("Success", "Product deleted successfully")
+        messagebox.showinfo("Success", "Deleted")
+        self.refresh_products()
+
+    def archive_products(self):
+        keyword = self.archive_entry.get()
+
+        if keyword == "":
+            messagebox.showwarning("Error", "Enter ID or Name")
+            return
+
+        conn = connect_db()
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT * FROM products WHERE id=? OR name=?", (keyword, keyword))
+        result = cursor.fetchone()
+
+        if not result:
+            messagebox.showerror("Error", "Not found")
+            conn.close()
+            return
+
+        confirm = messagebox.askyesno("Confirm", "Archive this product?")
+        if not confirm:
+            conn.close()
+            return
+
+        cursor.execute("""
+        INSERT INTO product_archive (name, price, stock)
+        SELECT name, price, stock FROM products WHERE id=? OR name=?
+        """, (keyword, keyword))
+
+        cursor.execute("DELETE FROM products WHERE id=? OR name=?", (keyword, keyword))
+
+        conn.commit()
+        conn.close()
+
+        self.archive_entry.delete(0, tk.END)
+        messagebox.showinfo("Success", "Archived")
         self.refresh_products()
 
     def OpenAddProductWindow(self):
@@ -227,6 +220,12 @@ class ProductManagementSystem:
     def OpenArchiveFeature(self):
         new_window = tk.Toplevel(self.root)
         ArchiveFeature(new_window)
+
+    def OpenLoginPage(self):
+        self.root.destroy()
+        new_window = tk.Tk()
+        MainApp(new_window)
+
 
 # Add Product Window
 class AddProductWindow:
@@ -249,6 +248,10 @@ class AddProductWindow:
         tk.Label(root, text="Product stock:").pack(pady=5)
         self.entry_stock = tk.Entry(root, width=20)
         self.entry_stock.pack(pady=5)
+
+        tk.Label(root, text="Product Category:").pack(pady=5)
+        self.entry_category = tk.Entry(root, width=20)
+        self.entry_category.pack(pady=5)
 
         self.add_product_button = tk.Button(root, text="Add product", width=18, command=self.add_product)
         self.add_product_button.pack(pady=5)
@@ -278,8 +281,9 @@ class AddProductWindow:
         product_name = self.entry_name.get()
         product_price = self.entry_price.get()
         product_stock = self.entry_stock.get()
+        product_category = self.entry_category.get()
 
-        if product_id == "" or product_name == "" or product_price == "" or product_stock == "":
+        if product_id == "" or product_name == "" or product_price == "" or product_stock == "" or product_category == "":
             messagebox.showerror("Error", "Please fill in all fields")
             return
 
@@ -297,8 +301,8 @@ class AddProductWindow:
 
         # INSERT
         cursor.execute(
-            "INSERT INTO products (id, name, price, stock) VALUES (?, ?, ?, ?)",
-            (product_id, product_name, product_price, product_stock)
+            "INSERT INTO products (id, name, price, stock, category) VALUES (?, ?, ?, ?, ?)",
+            (product_id, product_name, product_price, product_stock, product_category)
         )
 
         conn.commit()
@@ -314,7 +318,7 @@ class EditProductWindow:
         self.root = root
         self.main_app = main_app
         self.root.title("Edit Product Window")
-        self.root.geometry("500x400")
+        self.root.geometry("500x500")
 
         tk.Label(root, text="Update Existing Product", font=("Arial", 16, "bold")).pack(pady=10)
 
@@ -334,6 +338,10 @@ class EditProductWindow:
         self.update_stock = tk.Entry(root, width=20)
         self.update_stock.pack(pady=5)
 
+        tk.Label(root, text="Update Product Category:").pack(pady=5)
+        self.update_category = tk.Entry(root, width=20)
+        self.update_category.pack(pady=5)
+
         self.update_product_button = tk.Button(root, text="Update product", width=18, command=self.update_product)
         self.update_product_button.pack(pady=5)
 
@@ -342,6 +350,7 @@ class EditProductWindow:
         product_name = self.update_name.get()
         product_price = self.update_price.get()
         product_stock = self.update_stock.get()
+        product_category = self.update_category.get()
 
         if not product_id:
             messagebox.showerror("Error", "Please enter the Product ID to update")
@@ -350,17 +359,18 @@ class EditProductWindow:
         conn = connect_db()
         cursor = conn.cursor()
 
-        cursor.execute("SELECT name, price, stock FROM products WHERE id=?", (product_id,))
+        cursor.execute("SELECT name, price, stock, category FROM products WHERE id=?", (product_id,))
         result = cursor.fetchone()
 
         if not result:
             messagebox.showerror("Error", f"Product with ID {product_id} not found")
             conn.close()
             return
-        current_name, current_price, current_stock = result 
+        current_name, current_price, current_stock, current_category = result
         product_name = product_name if product_name.strip() else current_name
         product_price = product_price if product_price.strip() else current_price
         product_stock = product_stock if product_stock.strip() else current_stock
+        product_category = product_category if product_category.strip() else current_category
 
         if product_stock.strip():
             try:
@@ -371,10 +381,15 @@ class EditProductWindow:
                 return
         else:
             product_stock = current_stock
-            
+
+        if product_category.strip():
+            product_category = product_category
+        else:
+            product_category = current_category
+
         cursor.execute(
-            "UPDATE products SET name=?, price=?, stock=? WHERE id=?",
-            (product_name, product_price, product_stock, product_id)
+            "UPDATE products SET name=?, price=?, stock=?, category=? WHERE id=?",
+            (product_name, product_price, product_stock, product_category, product_id)
         )
 
         conn.commit()
@@ -384,6 +399,7 @@ class EditProductWindow:
         self.update_name.delete(0, tk.END)
         self.update_price.delete(0, tk.END)
         self.update_stock.delete(0, tk.END)
+        self.update_category.delete(0, tk.END)
 
         messagebox.showinfo("Success", "Product edited successfully")
         self.main_app.refresh_products()

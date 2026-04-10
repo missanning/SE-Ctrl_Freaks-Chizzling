@@ -4,75 +4,92 @@ from database_setup import connect_db
 from tkinter import messagebox
 
 
-# Main Window
 class IngredientsTableWindow:
     def __init__(self, root):
         self.root = root
         self.root.title("Ingredients Table")
-        self.root.geometry("900x750")
+        self.root.geometry("1000x600")
 
-        # Low stock limit
+        # Low stock limits
         self.low_grams = 5000
         self.low_pcs = 200
         self.low_tsp = 500
         self.low_slices = 500
         self.low_ml = 1500
 
-        # Title
+        # TITLE
         tk.Label(self.root, text="Ingredients Table",
                  font=("Arial", 18, "bold")).pack(pady=10)
 
-        # Data Table
-        self.tree = ttk.Treeview(self.root)
+        # MAIN FRAME
+        main_frame = tk.Frame(root)
+        main_frame.pack(fill="both", expand=True)
+
+        # LEFT (TABLE)
+        left_frame = tk.Frame(main_frame)
+        left_frame.grid(row=0, column=0, sticky="nsew")
+
+        # RIGHT (CONTROLS)
+        right_frame = tk.Frame(main_frame)
+        right_frame.grid(row=0, column=1, sticky="ns", padx=10)
+
+        # GRID CONFIG
+        main_frame.grid_columnconfigure(0, weight=3)
+        main_frame.grid_columnconfigure(1, weight=1)
+        main_frame.grid_rowconfigure(0, weight=1)
+
+        # =======================
+        # TABLE (LEFT)
+        # =======================
+        self.tree = ttk.Treeview(left_frame)
         self.tree.pack(fill="both", expand=True)
 
         self.load_products()
 
-        # Search bar
-        self.search_bar2 = tk.Entry(self.root, width=24)
+        # =======================
+        # CONTROLS (RIGHT)
+        # =======================
+
+        # SEARCH
+        tk.Label(right_frame, text="Search Ingredient").pack(pady=5)
+
+        self.search_bar2 = tk.Entry(right_frame, width=24)
         self.search_bar2.pack(pady=5)
 
-        # Search button
-        self.search_button2 = tk.Button(self.root, text="Search Ingredient", width=22,
-                                       command=self.search_product)
-        self.search_button2.pack(pady=5)
+        tk.Button(right_frame, text="Search Ingredient", width=22,
+                  command=self.search_product).pack(pady=5)
 
-        # Refresh button
-        self.button = tk.Button(self.root, text="Refresh Ingredients", width=22,
-                                command=self.refresh_products)
-        self.button.pack(pady=5)
+        # REFRESH
+        tk.Button(right_frame, text="Refresh Ingredients", width=22,
+                  command=self.refresh_products).pack(pady=5)
 
-        # Label
-        tk.Label(self.root, text="Enter Ingredient ID to Delete").pack(pady=5)
+        # DELETE SECTION
+        tk.Label(right_frame, text="Delete Ingredient").pack(pady=10)
 
-        # Frame for entry + button
-        delete_frame = tk.Frame(self.root)
+        delete_frame = tk.Frame(right_frame)
         delete_frame.pack(pady=5)
 
-        # Entry
         self.entry = tk.Entry(delete_frame, width=15)
         self.entry.pack(side=tk.LEFT, padx=5)
 
-        # Delete Button
-        self.button_delete2 = tk.Button(delete_frame, text="Delete", command=self.delete_product)
-        self.button_delete2.pack(side=tk.LEFT)
+        tk.Button(delete_frame, text="Delete",
+                  command=self.delete_product).pack(side=tk.LEFT)
 
-        # Add Button
-        self.button_add2 = tk.Button(self.root, text="Add Ingredient", width=22,
-                                     command=self.OpenAddProductWindow)
-        self.button_add2.pack(pady=5)
+        # ADD / EDIT
+        tk.Button(right_frame, text="Add Ingredient", width=22,
+                  command=self.OpenAddProductWindow).pack(pady=5)
 
-        # Edit Button
-        self.button_edit2 = tk.Button(self.root, text="Edit Ingredient", width=22,
-                                      command=self.OpenEditProductWindow)
-        self.button_edit2.pack(pady=5)
+        tk.Button(right_frame, text="Edit Ingredient", width=22,
+                  command=self.OpenEditProductWindow).pack(pady=5)
 
-    # Load products Ingredients Table
+    # =======================
+    # FUNCTIONS (UNCHANGED)
+    # =======================
+
     def load_products(self):
         conn = connect_db()
         cursor = conn.cursor()
 
-        # Display all ingredients
         cursor.execute("SELECT * FROM ingredients")
         rows = cursor.fetchall()
 
@@ -85,13 +102,12 @@ class IngredientsTableWindow:
 
         for col in column_names:
             self.tree.heading(col, text=col)
-            self.tree.column(col, width=150)
+            self.tree.column(col, width=120)
 
-        # Low stock alert system
         low_items = []
 
         for row in rows:
-            stock = row[2]  # stock column
+            stock = row[2]
 
             if stock <= self.low_grams and row[3] == "grams":
                 self.tree.insert("", tk.END, values=row, tags=("low",))
@@ -101,10 +117,10 @@ class IngredientsTableWindow:
                 low_items.append(row[1])
             elif stock <= self.low_tsp and row[3] == "tsp":
                 self.tree.insert("", tk.END, values=row, tags=("low",))
-                low_items.append(row[1]) 
+                low_items.append(row[1])
             elif stock <= self.low_slices and row[3] == "slices":
                 self.tree.insert("", tk.END, values=row, tags=("low",))
-                low_items.append(row[1])  
+                low_items.append(row[1])
             elif stock <= self.low_ml and row[3] == "ml":
                 self.tree.insert("", tk.END, values=row, tags=("low",))
                 low_items.append(row[1])
@@ -113,9 +129,11 @@ class IngredientsTableWindow:
 
         self.tree.tag_configure("low", background="red", foreground="white")
 
-        # Messagebox for low stock alert when opening the inventory management system
         if low_items:
-            messagebox.showwarning("Low Stock Alert", f"The following ingredients are low in stock: {', '.join(low_items)}")
+            messagebox.showwarning(
+                "Low Stock Alert",
+                f"Low stock: {', '.join(low_items)}"
+            )
 
         conn.close()
 
@@ -128,7 +146,6 @@ class IngredientsTableWindow:
         conn = connect_db()
         cursor = conn.cursor()
 
-        # Database query
         cursor.execute("""
         SELECT * FROM ingredients
         WHERE id LIKE ? OR name LIKE ?
@@ -147,33 +164,32 @@ class IngredientsTableWindow:
         keyword = self.entry.get()
 
         if keyword == "":
-            messagebox.showerror("Error", "Please enter an Ingredient ID or Name to delete")
+            messagebox.showerror("Error", "Enter ID or Name")
             return
 
         conn = connect_db()
         cursor = conn.cursor()
 
-        cursor.execute("""SELECT * FROM ingredients WHERE id= ? or name= ?""", (keyword, keyword))
-
+        cursor.execute("SELECT * FROM ingredients WHERE id=? OR name=?", (keyword, keyword))
         result = cursor.fetchone()
+
         if not result:
-            messagebox.showerror("Error", "Ingredient ID or Name not found")
+            messagebox.showerror("Error", "Not found")
             conn.close()
             return
-        
-        decide = messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete '{keyword}'?")
-        
-        if not decide:
+
+        confirm = messagebox.askyesno("Confirm", "Delete this ingredient?")
+        if not confirm:
             conn.close()
             return
-        
-        cursor.execute("""DELETE FROM ingredients
-                       WHERE id = ? OR name = ?""", (keyword, keyword))
+
+        cursor.execute("DELETE FROM ingredients WHERE id=? OR name=?", (keyword, keyword))
+
         conn.commit()
         conn.close()
 
         self.entry.delete(0, tk.END)
-        messagebox.showinfo("Success", "Ingredient deleted successfully")
+        messagebox.showinfo("Success", "Deleted")
         self.refresh_products()
 
     def OpenAddProductWindow(self):
@@ -183,6 +199,7 @@ class IngredientsTableWindow:
     def OpenEditProductWindow(self):
         new_window = tk.Toplevel(self.root)
         EditProductWindow2(new_window, self)
+
 
 
 # Add Product Window

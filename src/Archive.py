@@ -7,38 +7,77 @@ class ArchiveFeature:
     def __init__(self, root):
         self.root = root
         self.root.title("Archive Feature")
-        self.root.geometry("900x750")
+        self.root.geometry("1000x600")
 
-        tk.Label(root, text="Archive Table", font=("Arial", 12, "bold")).pack(pady=10)
+        # TITLE
+        tk.Label(root, text="Archive Table", font=("Arial", 14, "bold")).pack(pady=10)
 
-        self.tree = ttk.Treeview(root)
+        # MAIN FRAME
+        main_frame = tk.Frame(root)
+        main_frame.pack(fill="both", expand=True)
+
+        # LEFT FRAME (TABLE)
+        left_frame = tk.Frame(main_frame)
+        left_frame.grid(row=0, column=0, sticky="nsew")
+
+        # RIGHT FRAME (CONTROLS)
+        right_frame = tk.Frame(main_frame)
+        right_frame.grid(row=0, column=1, sticky="ns", padx=10)
+
+        # GRID CONFIG
+        main_frame.grid_columnconfigure(0, weight=3)
+        main_frame.grid_columnconfigure(1, weight=1)
+        main_frame.grid_rowconfigure(0, weight=1)
+
+        # =======================
+        # TABLE (LEFT)
+        # =======================
+        self.tree = ttk.Treeview(left_frame)
         self.tree.pack(fill="both", expand=True)
-        
+
         self.load_products()
 
-        self.reload_button = tk.Button(root, text="Reload", width=27, command=self.load_products)
-        self.reload_button.pack(pady=10)
-        
-        self.search_entry = tk.Entry(root, width=30)
-        self.search_entry.pack(pady=20)
+        # =======================
+        # RIGHT SIDE CONTROLS
+        # =======================
 
-        self.search_button = tk.Button(root, text="Search", width=27, command=self.search_product)
-        self.search_button.pack(pady=10)
+        # RELOAD
+        tk.Button(right_frame, text="Reload", width=22,
+                  command=self.load_products).pack(pady=5)
 
-        self.unarchive_entry = tk.Entry(root, width=30)
-        self.unarchive_entry.pack(pady=20)
+        # SEARCH
+        tk.Label(right_frame, text="Search Product").pack(pady=5)
 
-        self.unarchive_button = tk.Button(root, text="Unarchive", width=27, command=self.unarchive_products)
-        self.unarchive_button.pack(pady=10)
+        self.search_entry = tk.Entry(right_frame, width=25)
+        self.search_entry.pack(pady=5)
 
-        self.delete_entry = tk.Entry(root, width=30)
-        self.delete_entry.pack(pady=20)
+        tk.Button(right_frame, text="Search", width=22,
+                  command=self.search_product).pack(pady=5)
 
-        self.delete_button = tk.Button(root, text="Delete", width=27)
-        self.delete_button.pack(pady=10)
+        # UNARCHIVE
+        tk.Label(right_frame, text="Unarchive Product").pack(pady=10)
 
-        self.edit_button = tk.Button(root, text="Edit", width=27)
-        self.edit_button.pack(pady=10)
+        self.unarchive_entry = tk.Entry(right_frame, width=25)
+        self.unarchive_entry.pack(pady=5)
+
+        tk.Button(right_frame, text="Unarchive", width=22,
+                  command=self.unarchive_products).pack(pady=5)
+
+        # DELETE
+        tk.Label(right_frame, text="Delete Permanently").pack(pady=10)
+
+        self.delete_entry = tk.Entry(right_frame, width=25)
+        self.delete_entry.pack(pady=5)
+
+        tk.Button(right_frame, text="Delete", width=22,
+                  command=self.delete_product).pack(pady=5)
+
+        # EDIT (still empty function)
+        tk.Button(right_frame, text="Edit", width=22).pack(pady=10)
+
+    # =======================
+    # FUNCTIONS (UNCHANGED)
+    # =======================
 
     def load_products(self):
         conn = connect_db()
@@ -56,7 +95,7 @@ class ArchiveFeature:
 
         for col in column_names:
             self.tree.heading(col, text=col)
-            self.tree.column(col, width=150)
+            self.tree.column(col, width=120)
 
         for row in rows:
             self.tree.insert("", tk.END, values=row)
@@ -83,6 +122,38 @@ class ArchiveFeature:
 
         conn.close()
 
+    def delete_product(self):
+        keyword = self.delete_entry.get()
+
+        if keyword == "":
+            messagebox.showwarning("Warning", "Enter Product ID or Name")
+            return
+        
+        conn = connect_db()
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT * FROM product_archive WHERE id=? OR name=?", (keyword, keyword))
+        result = cursor.fetchone()
+
+        if not result:
+            messagebox.showerror("Error", "Product not found")
+            conn.close()
+            return
+        
+        confirm = messagebox.askyesno("Confirm", "Delete permanently?")
+        if not confirm:
+            conn.close()
+            return
+        
+        cursor.execute("DELETE FROM product_archive WHERE id=? OR name=?", (keyword, keyword))
+
+        conn.commit()
+        conn.close()
+
+        self.delete_entry.delete(0, tk.END)
+        messagebox.showinfo("Success", "Deleted permanently")
+        self.load_products()
+
     def unarchive_products(self):
         keyword = self.unarchive_entry.get()
 
@@ -97,17 +168,12 @@ class ArchiveFeature:
         result = cursor.fetchone()
 
         if not result:
-            messagebox.showerror("Error", f"Product with ID or Name '{keyword}' not found in archive")
+            messagebox.showerror("Error", "Product not found")
             conn.close()
             return
         
-        decide = messagebox.askyesno(
-            "Confirm Unarchive",
-            f"Are you sure you want to unarchive product with ID or Name '{keyword}'?"
-        )
-
-        
-        if not decide:
+        confirm = messagebox.askyesno("Confirm", "Unarchive this product?")
+        if not confirm:
             conn.close()
             return
         
@@ -122,9 +188,11 @@ class ArchiveFeature:
         conn.close()
 
         self.unarchive_entry.delete(0, tk.END)
-        messagebox.showinfo("Success", f"Product with ID or Name '{keyword}' has been unarchived")
+        messagebox.showinfo("Success", "Unarchived")
         self.load_products()
 
+
+# RUN
 if __name__ == "__main__":
     root = tk.Tk()
     app = ArchiveFeature(root)
