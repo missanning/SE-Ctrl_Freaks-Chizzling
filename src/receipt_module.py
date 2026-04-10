@@ -1,9 +1,12 @@
 import tkinter as tk
 from tkinter import messagebox, scrolledtext
 from datetime import datetime
-import win32print
-import win32ui
 import os
+import sys
+
+if sys.platform == "win32":
+    import win32print
+    import win32ui
 
 def generate_receipt_text(transaction_id, date, cart, total, change):
     receipt = f"""{'='*30}

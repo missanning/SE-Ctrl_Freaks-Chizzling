@@ -449,10 +449,23 @@ class TestDatabaseIntegrity:
     
     def test_complete_database_initialization(self):
         """Test complete database initialization process using actual database"""
-        # This test uses the real database to ensure everything works end-to-end
-        conn = connect_db()
+        import database_setup
+        original_connect = connect_db
+
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
+        temp_file.close()
+
+        def mock_connect():
+            return sqlite3.connect(temp_file.name)
+
+        database_setup.connect_db = mock_connect
+        database_setup.create_tables()
+        database_setup.insert_default_data()
+        database_setup.connect_db = original_connect
+
+        conn = sqlite3.connect(temp_file.name)
         cursor = conn.cursor()
-        
+
         # Verify all tables exist
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
         tables = [row[0] for row in cursor.fetchall()]
@@ -479,6 +492,7 @@ class TestDatabaseIntegrity:
         assert recipe_count > 0, "No recipes in database"
         
         conn.close()
+        os.unlink(temp_file.name)
 
 if __name__ == "__main__":
     pytest.main([__file__])
