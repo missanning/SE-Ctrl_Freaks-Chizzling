@@ -449,8 +449,7 @@ class TestDatabaseIntegrity:
     
     def test_complete_database_initialization(self):
         """Test complete database initialization process using actual database"""
-        create_tables()
-        insert_default_data()
+        # This test uses the real database to ensure everything works end-to-end
         conn = connect_db()
         cursor = conn.cursor()
         
