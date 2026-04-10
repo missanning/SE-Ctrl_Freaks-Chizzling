@@ -104,6 +104,7 @@ class MainApp:
         new_root.mainloop()
 
     def LoginInventoryStaff(self):
+        from ProductManagementSystem import ProductManagementSystem
         self.root.destroy()
         import sys
         import os

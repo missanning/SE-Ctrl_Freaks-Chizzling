@@ -22,7 +22,7 @@ class CartManager:
         self.parent.grid_columnconfigure(2, weight=0)
 
         # Title
-        tk.Label(self.cart_frame, text="CHECKOUT LIST", font=("Arial", 10, "bold"),
+        tk.Label(self.cart_frame, text="CHECKOUT LIST", font=("Arial", 14, "bold"),
                 bg="#FFFFFF").grid(row=0, column=0, columnspan=3, padx=100, pady=5, sticky="ew")
 
         # Cart items container with scrollbar
@@ -70,18 +70,18 @@ class CartManager:
         self.cart_frame.grid_columnconfigure(0, weight=1)
 
         # Total label
-        self.total_label = tk.Label(self.cart_frame, text="Total: 0", bg="#FFFFFF", font=("Arial", 10, "bold"))
+        self.total_label = tk.Label(self.cart_frame, text="Total: 0", bg="#FFFFFF", font=("Arial", 14, "bold"), fg="#FF6600")
         self.total_label.grid(row=2, column=0, columnspan=3, pady=(10, 5), sticky="w", padx=10)
 
         # Payment section
-        tk.Label(self.cart_frame, text="Payment:", bg="#FFFFFF").grid(row=4, column=0, sticky="w", padx=10)
-        self.payment_entry = tk.Entry(self.cart_frame)
-        self.payment_entry.grid(row=4, column=1, columnspan=2, pady=5, sticky="ew", padx=10)
+        tk.Label(self.cart_frame, text="Payment:", bg="#FFFFFF", font=("Arial", 12, "bold")).grid(row=4, column=0, sticky="w", padx=10)
+        self.payment_entry = tk.Entry(self.cart_frame, font=("Arial", 14), width=20, bd=2, relief="solid")
+        self.payment_entry.grid(row=4, column=1, columnspan=2, pady=8, ipady=5, sticky="ew", padx=10)
 
         # Confirm payment button
         tk.Button(self.cart_frame, text="Confirm Payment", command=self.pos.confirm_payment,
                   bg="#28A745", fg="white", activebackground="#3DC06B", activeforeground="white",
-                  relief="raised").grid(row=5, column=0, columnspan=3, pady=10, padx=10, sticky="ew")
+                  relief="raised", font=("Arial", 12, "bold"), height=2).grid(row=5, column=0, columnspan=3, pady=10, padx=10, sticky="ew")
         
         # Initialize with header only
         self.update_cart()
@@ -108,11 +108,11 @@ class CartManager:
 
         # Header row
         header_bg = "#FFFFFF"
-        tk.Label(self.cart_items_frame, text="Name", bg=header_bg, width=18).grid(row=0, column=0, sticky="w", padx=10)
+        tk.Label(self.cart_items_frame, text="Name", bg=header_bg, width=18, font=("Arial", 12, "bold")).grid(row=0, column=0, sticky="w", padx=10, pady=5)
         tk.Label(self.cart_items_frame, text="", bg=header_bg, width=2).grid(row=0, column=1)
-        tk.Label(self.cart_items_frame, text="QTY", bg=header_bg, width=6).grid(row=0, column=2)
+        tk.Label(self.cart_items_frame, text="QTY", bg=header_bg, width=6, font=("Arial", 12, "bold")).grid(row=0, column=2, pady=5)
         tk.Label(self.cart_items_frame, text="", bg=header_bg, width=2).grid(row=0, column=3)
-        tk.Label(self.cart_items_frame, text="PRICE", bg=header_bg, width=8).grid(row=0, column=4, sticky="e", padx=10)
+        tk.Label(self.cart_items_frame, text="PRICE", bg=header_bg, width=8, font=("Arial", 12, "bold")).grid(row=0, column=4, sticky="e", padx=10, pady=5)
 
         # Cart items
         for i, item in enumerate(self.cart):
@@ -122,23 +122,23 @@ class CartManager:
             price = item['price'] * qty
 
             # Name
-            tk.Label(self.cart_items_frame, text=name, bg="#FFFFFF").grid(row=row, column=0, padx=(10,4), pady=2, sticky="w")
+            tk.Label(self.cart_items_frame, text=name, bg="#FFFFFF", font=("Arial", 11), wraplength=180).grid(row=row, column=0, padx=(10,4), pady=4, sticky="w")
 
             # Minus button
-            tk.Button(self.cart_items_frame, text="-", width=2,
-                    command=lambda x=i: self.change_qty(x,-1)).grid(row=row, column=1, padx=2, pady=2)
+            tk.Button(self.cart_items_frame, text="-", width=3, height=1, font=("Arial", 12, "bold"),
+                    command=lambda x=i: self.change_qty(x,-1)).grid(row=row, column=1, padx=3, pady=4)
 
             # Quantity
-            tk.Label(self.cart_items_frame, text=str(qty), width=6,
-                    bg="#FFFFFF").grid(row=row, column=2, padx=2, pady=2)
+            tk.Label(self.cart_items_frame, text=str(qty), width=4, font=("Arial", 12, "bold"),
+                    bg="#FFFFFF", relief="solid", bd=1).grid(row=row, column=2, padx=3, pady=4)
 
             # Plus button
-            tk.Button(self.cart_items_frame, text="+", width=2,
-                    command=lambda x=i: self.change_qty(x,1)).grid(row=row, column=3, padx=2, pady=2)
+            tk.Button(self.cart_items_frame, text="+", width=3, height=1, font=("Arial", 12, "bold"),
+                    command=lambda x=i: self.change_qty(x,1)).grid(row=row, column=3, padx=3, pady=4)
 
             # Price
-            tk.Label(self.cart_items_frame, text=f"{price:.2f}", width=8, 
-                    bg="#FFFFFF").grid(row=row, column=4, padx=(4,10), pady=2, sticky="e")
+            tk.Label(self.cart_items_frame, text=f"₱{price:.2f}", width=10, font=("Arial", 12, "bold"), fg="#FF6600",
+                    bg="#FFFFFF").grid(row=row, column=4, padx=(4,10), pady=4, sticky="e")
         
         self.update_total()
     
@@ -154,7 +154,7 @@ class CartManager:
     def update_total(self):
         """Update the total price display"""
         self.total = sum(item['price'] * item['qty'] for item in self.cart)
-        self.total_label.config(text=f"Total: {self.total:.2f}")
+        self.total_label.config(text=f"Total: ₱{self.total:.2f}")
     
     def clear_cart(self):
         """Clear all items from cart"""
