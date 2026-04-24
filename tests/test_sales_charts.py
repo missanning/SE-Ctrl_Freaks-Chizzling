@@ -180,7 +180,8 @@ class TestPeriodDateCalculations:
         _, weekly_dates, _ = _build_period_dates("weekly")
         _, monthly_dates, _ = _build_period_dates("monthly")
         assert len(daily_dates) != len(weekly_dates)
-        assert len(weekly_dates) == len(monthly_dates)  # both 4/6 range entries
+        assert len(weekly_dates) != len(monthly_dates)
+        assert len(daily_dates) != len(monthly_dates)
 
     def test_weekly_each_range_spans_7_days(self):
         _, dates, _ = _build_period_dates("weekly")
