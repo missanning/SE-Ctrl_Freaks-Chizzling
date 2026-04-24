@@ -1,6 +1,10 @@
 name: Enforce Naming Convention
 
 on:
+  push:
+    # Using '**' tells GitHub to run this on every branch push
+    branches:
+      - '**'
   pull_request:
     types:
       - opened
