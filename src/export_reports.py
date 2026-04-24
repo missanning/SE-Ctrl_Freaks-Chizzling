@@ -1,6 +1,5 @@
 import csv
 import os
-import tempfile
 import webbrowser
 from collections import namedtuple
 from datetime import datetime
@@ -175,8 +174,24 @@ def export_pdf(period):
 </body>
 </html>"""
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".html", delete=False, encoding="utf-8") as f:
-        f.write(html)
-        temp_path = f.name
+    default_name = f"sales_report_{period}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
+    path = filedialog.asksaveasfilename(
+        defaultextension=".html",
+        filetypes=[("HTML files", "*.html")],
+        initialfile=default_name,
+        title="Save PDF Report"
+    )
+    if not path:
+        return
 
-    webbrowser.open(f"file://{temp_path}")
+    try:
+        path = _safe_path(path)
+    except ValueError as e:
+        messagebox.showerror("Export Error", str(e))
+        return
+
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(html)
+
+    messagebox.showinfo("Export Successful", f"PDF report saved to:\n{path}\n\nUse Print → Save as PDF in the browser.")
+    webbrowser.open(f"file:///{path}")
