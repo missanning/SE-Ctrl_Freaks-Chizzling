@@ -1,8 +1,10 @@
 import tkinter as tk
+from tkinter import messagebox
 import os
 import sys
 import subprocess
 from dashboard_views import DashboardViews
+import export_reports
 
 
 class Dashboard(DashboardViews):
@@ -39,16 +41,53 @@ class Dashboard(DashboardViews):
             ("Top Products",      self.show_top_products,         "#FFC107", "black"),
             ("Revenue Analysis",  self.show_revenue_analysis,     "#17A2B8", "white"),
             ("View Transactions", self.open_transaction_analytics,"#6F42C1", "white"),
+            ("Export Report",     self.open_export_dialog,        "#FF6600", "white"),
             ("Logout",            self.logout_and_redirect,       "#DC3545", "white"),
         ]
         for col, (text, cmd, bg, fg) in enumerate(buttons):
             tk.Button(nav, text=text, command=cmd, bg=bg, fg=fg,
                       font=("Arial", 12, "bold"), height=2
                       ).grid(row=0, column=col, sticky="ew", padx=3)
+        nav.grid_columnconfigure(tuple(range(len(buttons))), weight=1)
 
         # Content area
         self.content_frame = tk.Frame(main, bg="#FFFFFF", bd=2, relief="raised")
         self.content_frame.grid(row=2, column=0, sticky="nsew", padx=20, pady=(0, 20))
+
+    def open_export_dialog(self):
+        win = tk.Toplevel(self.root)
+        win.title("Export Sales Report")
+        win.geometry("340x260")
+        win.resizable(False, False)
+        win.configure(bg="#FAF3E1")
+        win.grab_set()
+
+        tk.Label(win, text="Export Sales Report", font=("Arial", 14, "bold"),
+                 bg="#FAF3E1", fg="#FF6600").pack(pady=(20, 5))
+
+        tk.Label(win, text="Select Period:", font=("Arial", 11), bg="#FAF3E1").pack()
+        period_var = tk.StringVar(value="daily")
+        period_frame = tk.Frame(win, bg="#FAF3E1")
+        period_frame.pack(pady=5)
+        for text, val in [("Daily", "daily"), ("Weekly", "weekly"), ("Monthly", "monthly")]:
+            tk.Radiobutton(period_frame, text=text, variable=period_var, value=val,
+                           bg="#FAF3E1", font=("Arial", 11)).pack(side="left", padx=8)
+
+        tk.Label(win, text="Select Format:", font=("Arial", 11), bg="#FAF3E1").pack(pady=(10, 0))
+        fmt_frame = tk.Frame(win, bg="#FAF3E1")
+        fmt_frame.pack(pady=5)
+        tk.Button(fmt_frame, text="📄 Export CSV",
+                  command=lambda: [win.destroy(), export_reports.export_csv(period_var.get())],
+                  bg="#28A745", fg="white", font=("Arial", 12, "bold"),
+                  width=14, height=2).pack(side="left", padx=8)
+        tk.Button(fmt_frame, text="🖨 Export PDF",
+                  command=lambda: [win.destroy(), export_reports.export_pdf(period_var.get())],
+                  bg="#17A2B8", fg="white", font=("Arial", 12, "bold"),
+                  width=14, height=2).pack(side="left", padx=8)
+
+        tk.Button(win, text="Cancel", command=win.destroy,
+                  bg="#6C757D", fg="white", font=("Arial", 10
+                  )).pack(pady=(15, 0))
 
     def open_transaction_analytics(self):
         try:
