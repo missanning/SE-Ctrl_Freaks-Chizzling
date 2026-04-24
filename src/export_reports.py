@@ -2,10 +2,23 @@ import csv
 import os
 import tempfile
 import webbrowser
+from collections import namedtuple
 from datetime import datetime
 from tkinter import filedialog, messagebox
 
 from dashboard_db import connect_db, get_date_range
+
+ReportData = namedtuple("ReportData", ["title", "date_from", "date_to", "summary", "products", "transactions"])
+
+_SAFE_EXPORT_DIR = os.path.expanduser("~")
+
+
+def _safe_path(path):
+    """Ensure the save path stays within the user's home directory tree."""
+    abs_path = os.path.realpath(os.path.abspath(path))
+    if not abs_path.startswith(os.path.realpath(_SAFE_EXPORT_DIR)):
+        raise ValueError(f"Export path outside allowed directory: {abs_path}")
+    return abs_path
 
 
 # ── Data fetching ─────────────────────────────────────────────────────────────
@@ -37,13 +50,13 @@ def _fetch_report_data(period):
         transactions = cur.fetchall()
 
     conn.close()
-    return title, date_from, date_to, summary, products, transactions
+    return ReportData(title, date_from, date_to, summary, products, transactions)
 
 
 # ── CSV Export ────────────────────────────────────────────────────────────────
 
 def export_csv(period):
-    title, date_from, date_to, summary, products, transactions = _fetch_report_data(period)
+    data = _fetch_report_data(period)
 
     default_name = f"sales_report_{period}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
     path = filedialog.asksaveasfilename(
@@ -55,30 +68,36 @@ def export_csv(period):
     if not path:
         return
 
+    try:
+        path = _safe_path(path)
+    except ValueError as e:
+        messagebox.showerror("Export Error", str(e))
+        return
+
     with open(path, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
 
         writer.writerow(["CHIZZLING POS - SALES REPORT"])
-        writer.writerow(["Period", title])
+        writer.writerow(["Period", data.title])
         writer.writerow(["Generated", datetime.now().strftime("%Y-%m-%d %H:%M:%S")])
         writer.writerow([])
 
         writer.writerow(["SUMMARY"])
-        writer.writerow(["Total Transactions", summary[0]])
-        writer.writerow(["Total Sales", f"{summary[1]:.2f}"])
-        avg = summary[1] / summary[0] if summary[0] else 0
+        writer.writerow(["Total Transactions", data.summary[0]])
+        writer.writerow(["Total Sales", f"{data.summary[1]:.2f}"])
+        avg = data.summary[1] / data.summary[0] if data.summary[0] else 0
         writer.writerow(["Average Transaction", f"{avg:.2f}"])
         writer.writerow([])
 
         writer.writerow(["TOP PRODUCTS"])
         writer.writerow(["Product", "Quantity Sold", "Total Revenue"])
-        for name, qty, rev in products:
+        for name, qty, rev in data.products:
             writer.writerow([name, int(qty), f"{rev:.2f}"])
         writer.writerow([])
 
         writer.writerow(["TRANSACTIONS"])
         writer.writerow(["ID", "Date", "Total", "Payment", "Change"])
-        for tid, date, total, payment, change in transactions:
+        for tid, date, total, payment, change in data.transactions:
             writer.writerow([tid, date, f"{total:.2f}", f"{payment:.2f}", f"{change:.2f}"])
 
     messagebox.showinfo("Export Successful", f"CSV report saved to:\n{path}")
@@ -87,24 +106,24 @@ def export_csv(period):
 # ── PDF Export (HTML → browser print) ────────────────────────────────────────
 
 def export_pdf(period):
-    title, date_from, date_to, summary, products, transactions = _fetch_report_data(period)
-    avg = summary[1] / summary[0] if summary[0] else 0
+    data = _fetch_report_data(period)
+    avg = data.summary[1] / data.summary[0] if data.summary[0] else 0
 
     product_rows = "".join(
         f"<tr><td>{name}</td><td>{int(qty)}</td><td>&#8369;{rev:.2f}</td></tr>"
-        for name, qty, rev in products
+        for name, qty, rev in data.products
     )
     transaction_rows = "".join(
         f"<tr><td>{tid}</td><td>{date}</td><td>&#8369;{total:.2f}</td>"
         f"<td>&#8369;{payment:.2f}</td><td>&#8369;{change:.2f}</td></tr>"
-        for tid, date, total, payment, change in transactions
+        for tid, date, total, payment, change in data.transactions
     )
 
     html = f"""<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Sales Report - {title}</title>
+  <title>Sales Report - {data.title}</title>
   <style>
     body {{ font-family: Arial, sans-serif; margin: 40px; color: #333; }}
     h1 {{ color: #FF6600; border-bottom: 3px solid #FF6600; padding-bottom: 10px; }}
@@ -124,7 +143,7 @@ def export_pdf(period):
 </head>
 <body>
   <h1>&#127859; Chizzling POS &mdash; Sales Report</h1>
-  <p class="meta">Period: <strong>{title}</strong> &nbsp;|&nbsp;
+  <p class="meta">Period: <strong>{data.title}</strong> &nbsp;|&nbsp;
      Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>
 
   <button onclick="window.print()"
@@ -135,8 +154,8 @@ def export_pdf(period):
 
   <h2>Summary</h2>
   <div class="cards">
-    <div class="card"><div>Total Transactions</div><div class="val">{summary[0]}</div></div>
-    <div class="card"><div>Total Sales</div><div class="val">&#8369;{summary[1]:.2f}</div></div>
+    <div class="card"><div>Total Transactions</div><div class="val">{data.summary[0]}</div></div>
+    <div class="card"><div>Total Sales</div><div class="val">&#8369;{data.summary[1]:.2f}</div></div>
     <div class="card"><div>Avg Transaction</div><div class="val">&#8369;{avg:.2f}</div></div>
   </div>
 
