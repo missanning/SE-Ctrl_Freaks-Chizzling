@@ -16,7 +16,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          # This ensures titles start with feat, fix, chore, docs, etc.
           types: |
             feat
             fix
@@ -25,7 +24,6 @@ jobs:
             style
             refactor
             test
-          # Set to true if you want to require a scope like feat(ui): description
           requireScope: false
 
   check-branch-name:
@@ -33,7 +31,6 @@ jobs:
     steps:
       - name: Check Branch Name
         run: |
-          # This regex allows branches starting with feat/, fix/, or chore/
           if [[ ! ${{ github.head_ref }} =~ ^(feat|fix|chore|docs)/.* ]]; then
             echo "Error: Branch name must start with feat/, fix/, chore/, or docs/"
             exit 1
