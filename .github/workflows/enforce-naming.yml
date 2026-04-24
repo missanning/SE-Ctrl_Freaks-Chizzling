@@ -13,7 +13,6 @@ on:
 jobs:
   check-title:
     runs-on: ubuntu-latest
-    # This step only runs on Pull Requests, so it won't crash on a regular push
     if: github.event_name == 'pull_request'
     steps:
       - name: Check PR Title
@@ -31,16 +30,38 @@ jobs:
             test
           requireScope: false
 
-  check-branch-name:
+  check-commit-message:
     runs-on: ubuntu-latest
     steps:
-      - name: Check Branch Name
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check Commit Messages
         run: |
-          BRANCH_NAME="${{ github.ref_name }}"
-          # This allows main and develop to pass, but checks all other branches
-          if [[ "$BRANCH_NAME" == "main" || "$BRANCH_NAME" == "develop" ]]; then
-            echo "Branch $BRANCH_NAME is protected; skipping check."
-          elif [[ ! "$BRANCH_NAME" =~ ^(feat|fix|chore|docs)/.* ]]; then
-            echo "Error: Branch name '$BRANCH_NAME' must start with feat/, fix/, chore/, or docs/"
+          PATTERN="^(feat|fix|chore|docs|style|refactor|test)(\(.+\))?: .+"
+          INVALID=0
+
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            COMMITS=$(git log --format="%s" ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }})
+          else
+            COMMITS=$(git log --format="%s" -1)
+          fi
+
+          while IFS= read -r MSG; do
+            if [ -z "$MSG" ]; then
+              continue
+            fi
+            if ! echo "$MSG" | grep -qP "$PATTERN"; then
+              echo "Invalid commit message: '$MSG'"
+              echo "Expected format: type: description (e.g. feat: add login page)"
+              INVALID=1
+            else
+              echo "Valid commit message: '$MSG'"
+            fi
+          done <<< "$COMMITS"
+
+          if [ "$INVALID" -eq 1 ]; then
             exit 1
           fi
