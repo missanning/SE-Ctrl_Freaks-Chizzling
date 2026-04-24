@@ -27,8 +27,8 @@ jobs:
             test
           # Set to true if you want to require a scope like feat(ui): description
           requireScope: false
-          
-check-branch-name:
+
+  check-branch-name:
     runs-on: ubuntu-latest
     steps:
       - name: Check Branch Name
