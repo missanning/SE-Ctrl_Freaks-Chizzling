@@ -1,13 +1,11 @@
 import csv
 import os
+import subprocess
+import tempfile
+import time
 from collections import namedtuple
 from datetime import datetime
 from tkinter import filedialog, messagebox
-
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_pdf import PdfPages
 
 from dashboard_db import connect_db, get_date_range
 
@@ -106,7 +104,7 @@ def export_csv(period):
     messagebox.showinfo("Export Successful", f"CSV report saved to:\n{path}")
 
 
-# ── PDF Export (matplotlib PdfPages) ─────────────────────────────────────────
+# ── PDF Export (HTML → Microsoft Print to PDF) ───────────────────────────────
 
 def export_pdf(period):
     data = _fetch_report_data(period)
@@ -129,106 +127,117 @@ def export_pdf(period):
         messagebox.showerror("Export Error", str(e))
         return
 
-    ORANGE, DARK, GRAY = "#FF6600", "#333333", "#888888"
+    product_rows = "".join(
+        f"<tr><td>{name}</td><td>{int(qty)}</td><td>&#8369;{rev:.2f}</td></tr>"
+        for name, qty, rev in data.products
+    ) or '<tr><td colspan="3">No data</td></tr>'
 
-    with PdfPages(path) as pdf:
-        # ── Page 1: Summary ───────────────────────────────────────────────────
-        fig, ax = plt.subplots(figsize=(8.5, 11))
-        ax.axis("off")
-        fig.patch.set_facecolor("white")
+    transaction_rows = "".join(
+        f"<tr><td>{tid}</td><td>{date}</td><td>&#8369;{total:.2f}</td>"
+        f"<td>&#8369;{payment:.2f}</td><td>&#8369;{change:.2f}</td></tr>"
+        for tid, date, total, payment, change in data.transactions
+    ) or '<tr><td colspan="5">No data</td></tr>'
 
-        y = 0.97
-        ax.text(0.5, y, "Chizzling POS — Sales Report", ha="center", va="top",
-                fontsize=18, fontweight="bold", color=ORANGE, transform=ax.transAxes)
-        y -= 0.04
-        ax.plot([0.05, 0.95], [y, y], color=ORANGE, linewidth=2,
-                transform=ax.transAxes)
-        y -= 0.03
-        ax.text(0.5, y, f"Period: {data.title}    |    Generated: {generated}",
-                ha="center", va="top", fontsize=9, color=GRAY, transform=ax.transAxes)
+    html = f"""<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+    body {{ font-family: Arial, sans-serif; font-size: 12px; color: #333; padding: 40px; }}
+    .header {{ background: #FF6600; color: white; padding: 20px 30px; margin-bottom: 24px; }}
+    .header h1 {{ font-size: 22px; margin-bottom: 4px; }}
+    .header p {{ font-size: 11px; opacity: 0.85; }}
+    .section {{ margin-bottom: 28px; }}
+    .section h2 {{ font-size: 14px; color: #FF6600; border-bottom: 2px solid #FF6600;
+                   padding-bottom: 4px; margin-bottom: 12px; }}
+    .cards {{ display: flex; gap: 16px; margin-bottom: 8px; }}
+    .card {{ flex: 1; border: 1px solid #ddd; border-left: 5px solid #FF6600;
+             border-radius: 4px; padding: 14px 18px; background: #fff8f3; }}
+    .card .label {{ font-size: 10px; color: #888; text-transform: uppercase; }}
+    .card .value {{ font-size: 20px; font-weight: bold; color: #FF6600; margin-top: 4px; }}
+    table {{ width: 100%; border-collapse: collapse; font-size: 11px; }}
+    th {{ background: #FF6600; color: white; padding: 8px 10px; text-align: left; }}
+    td {{ padding: 7px 10px; border-bottom: 1px solid #eee; }}
+    tr:nth-child(even) td {{ background: #fff8f3; }}
+    .footer {{ margin-top: 40px; text-align: center; font-size: 10px; color: #aaa; }}
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>&#127859; Chizzling POS &mdash; Sales Report</h1>
+    <p>Period: {data.title} &nbsp;&nbsp;|&nbsp;&nbsp; Generated: {generated}</p>
+  </div>
 
-        y -= 0.06
-        ax.text(0.05, y, "Summary", fontsize=13, fontweight="bold",
-                color=DARK, transform=ax.transAxes)
-        y -= 0.04
-        for label, value in [
-            ("Total Transactions", str(data.summary[0])),
-            ("Total Sales",        f"P{data.summary[1]:.2f}"),
-            ("Avg Transaction",    f"P{avg:.2f}"),
-        ]:
-            ax.text(0.07, y, label, fontsize=10, color=DARK, transform=ax.transAxes)
-            ax.text(0.45, y, value, fontsize=10, fontweight="bold",
-                    color=ORANGE, transform=ax.transAxes)
-            y -= 0.035
+  <div class="section">
+    <h2>Summary</h2>
+    <div class="cards">
+      <div class="card"><div class="label">Total Transactions</div>
+        <div class="value">{data.summary[0]}</div></div>
+      <div class="card"><div class="label">Total Sales</div>
+        <div class="value">&#8369;{data.summary[1]:.2f}</div></div>
+      <div class="card"><div class="label">Avg Transaction</div>
+        <div class="value">&#8369;{avg:.2f}</div></div>
+    </div>
+  </div>
 
-        y -= 0.04
-        ax.text(0.05, y, "Top Products", fontsize=13, fontweight="bold",
-                color=DARK, transform=ax.transAxes)
-        y -= 0.04
+  <div class="section">
+    <h2>Top Products</h2>
+    <table>
+      <tr><th>Product</th><th>Qty Sold</th><th>Total Revenue</th></tr>
+      {product_rows}
+    </table>
+  </div>
 
-        col_x = [0.07, 0.55, 0.75]
-        for header, x in zip(["Product", "Qty Sold", "Revenue"], col_x):
-            ax.text(x, y, header, fontsize=10, fontweight="bold",
-                    color="white", transform=ax.transAxes,
-                    bbox=dict(facecolor=ORANGE, edgecolor="none", pad=3))
-        y -= 0.035
+  <div class="section">
+    <h2>Transactions</h2>
+    <table>
+      <tr><th>ID</th><th>Date</th><th>Total</th><th>Payment</th><th>Change</th></tr>
+      {transaction_rows}
+    </table>
+  </div>
 
-        for i, (name, qty, rev) in enumerate(data.products):
-            bg = "#FFF3E0" if i % 2 == 0 else "white"
-            ax.axhspan(y - 0.005, y + 0.025, xmin=0.05, xmax=0.95,
-                       color=bg, transform=ax.transAxes)
-            ax.text(col_x[0], y, name[:45], fontsize=9, color=DARK, transform=ax.transAxes)
-            ax.text(col_x[1], y, str(int(qty)), fontsize=9, color=DARK, transform=ax.transAxes)
-            ax.text(col_x[2], y, f"P{rev:.2f}", fontsize=9, color=DARK, transform=ax.transAxes)
-            y -= 0.03
-            if y < 0.05:
-                pdf.savefig(fig, bbox_inches="tight")
-                plt.close(fig)
-                fig, ax = plt.subplots(figsize=(8.5, 11))
-                ax.axis("off")
-                fig.patch.set_facecolor("white")
-                y = 0.95
+  <div class="footer">Chizzling POS &mdash; Confidential Sales Report</div>
+</body>
+</html>"""
 
-        pdf.savefig(fig, bbox_inches="tight")
-        plt.close(fig)
+    # Write HTML to a temp file
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".html",
+                                     delete=False, encoding="utf-8") as f:
+        f.write(html)
+        tmp_html = f.name
 
-        # ── Page 2+: Transactions ─────────────────────────────────────────────
-        fig, ax = plt.subplots(figsize=(8.5, 11))
-        ax.axis("off")
-        fig.patch.set_facecolor("white")
+    # Use Chrome/Edge headless to print HTML directly to PDF
+    browsers = [
+        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+        r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+    ]
+    browser = next((b for b in browsers if os.path.exists(b)), None)
 
-        y = 0.97
-        ax.text(0.05, y, "Transactions", fontsize=13, fontweight="bold",
-                color=DARK, transform=ax.transAxes)
-        y -= 0.04
+    if not browser:
+        messagebox.showerror("Export Error", "Chrome or Edge not found. Cannot generate PDF.")
+        os.remove(tmp_html)
+        return
 
-        t_cols = [0.05, 0.15, 0.45, 0.62, 0.78]
-        for header, x in zip(["ID", "Date", "Total", "Payment", "Change"], t_cols):
-            ax.text(x, y, header, fontsize=10, fontweight="bold",
-                    color="white", transform=ax.transAxes,
-                    bbox=dict(facecolor=ORANGE, edgecolor="none", pad=3))
-        y -= 0.035
+    try:
+        subprocess.run([
+            browser,
+            "--headless",
+            "--disable-gpu",
+            "--no-sandbox",
+            f"--print-to-pdf={path}",
+            "--print-to-pdf-no-header",
+            tmp_html
+        ], check=True, timeout=30,
+           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-        for i, (tid, date, total, payment, change) in enumerate(data.transactions):
-            bg = "#FFF3E0" if i % 2 == 0 else "white"
-            ax.axhspan(y - 0.005, y + 0.025, xmin=0.03, xmax=0.97,
-                       color=bg, transform=ax.transAxes)
-            for val, x in zip([str(tid), date, f"P{total:.2f}",
-                                f"P{payment:.2f}", f"P{change:.2f}"], t_cols):
-                ax.text(x, y, val, fontsize=8, color=DARK, transform=ax.transAxes)
-            y -= 0.028
-            if y < 0.05:
-                pdf.savefig(fig, bbox_inches="tight")
-                plt.close(fig)
-                fig, ax = plt.subplots(figsize=(8.5, 11))
-                ax.axis("off")
-                fig.patch.set_facecolor("white")
-                y = 0.95
-
-        ax.text(0.5, 0.02, "Chizzling POS — Confidential Sales Report",
-                ha="center", fontsize=8, color=GRAY, transform=ax.transAxes)
-        pdf.savefig(fig, bbox_inches="tight")
-        plt.close(fig)
-
-    os.startfile(path)
-    messagebox.showinfo("Export Successful", f"PDF report saved to:\n{path}")
+        time.sleep(4)  # wait for Chrome to finish writing the file
+        os.startfile(path)
+        messagebox.showinfo("Export Successful", f"PDF report saved to:\n{path}")
+    except Exception as e:
+        messagebox.showerror("Export Error", f"Failed to generate PDF:\n{e}")
+    finally:
+        try:
+            os.remove(tmp_html)
+        except OSError:
+            pass
