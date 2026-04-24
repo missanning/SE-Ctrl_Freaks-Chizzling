@@ -1,0 +1,40 @@
+name: Enforce Naming Convention
+
+on:
+  pull_request:
+    types:
+      - opened
+      - edited
+      - synchronized
+
+jobs:
+  check-title:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR Title
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # This ensures titles start with feat, fix, chore, docs, etc.
+          types: |
+            feat
+            fix
+            chore
+            docs
+            style
+            refactor
+            test
+          # Set to true if you want to require a scope like feat(ui): description
+          requireScope: false
+          
+check-branch-name:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Branch Name
+        run: |
+          # This regex allows branches starting with feat/, fix/, or chore/
+          if [[ ! ${{ github.head_ref }} =~ ^(feat|fix|chore|docs)/.* ]]; then
+            echo "Error: Branch name must start with feat/, fix/, chore/, or docs/"
+            exit 1
+          fi
