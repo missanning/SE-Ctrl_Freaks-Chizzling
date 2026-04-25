@@ -6,7 +6,7 @@ from database_setup import connect_db
 class MainApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Main Window")
+        self.root.title("Login")
         self.root.geometry("300x300")
 
         self.label = tk.Label(root, text="Login Page")
