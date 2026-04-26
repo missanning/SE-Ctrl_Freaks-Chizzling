@@ -69,8 +69,8 @@ class MainApp:
             messagebox.showinfo("Success", "Logged in successfully!")
             self.open_chizzling_pos()
 
-        elif role == "owner":
-            self.display_label.config(text="Logged in as Owner")
+        elif role == "admin":
+            self.display_label.config(text="Logged in as Admin")
             messagebox.showinfo("Success", "Logged in successfully!")
             self.open_dashboard()
 

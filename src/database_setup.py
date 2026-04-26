@@ -122,7 +122,7 @@ def insert_default_data():
     users = [
         ("cashier", "1234", "cashier"),
         ("inventory_staff", "1234", "inventory_staff"),
-        ("admin", "1234", "owner")
+        ("admin", "1234", "admin")
     ]
 
     cursor.executemany(
