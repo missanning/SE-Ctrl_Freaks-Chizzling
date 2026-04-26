@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
-from datetime import datetime, timedelta
+from datetime import datetime
 from dashboard_db import connect_db
 
 
@@ -19,6 +19,17 @@ def _ensure_archive_tables():
             quantity INTEGER, subtotal REAL
         )""")
     conn.close()
+
+
+def _month_range(year, month):
+    """Return (first_day, last_day) strings for a given month."""
+    import calendar
+    last_day = calendar.monthrange(year, month)[1]
+    return (f"{year}-{month:02d}-01", f"{year}-{month:02d}-{last_day:02d}")
+
+
+MONTHS = ["January", "February", "March", "April", "May", "June",
+          "July", "August", "September", "October", "November", "December"]
 
 
 class SalesArchive:
@@ -40,17 +51,24 @@ class SalesArchive:
         ctrl = tk.Frame(self.root, bg="#FAF3E1")
         ctrl.pack(fill="x", padx=20, pady=12)
 
-        tk.Label(ctrl, text="Archive transactions older than:",
+        tk.Label(ctrl, text="Archive month:",
                  font=("Arial", 11), bg="#FAF3E1").pack(side="left", padx=(0, 8))
 
-        self.days_var = tk.StringVar(value="30")
-        days_cb = ttk.Combobox(ctrl, textvariable=self.days_var, width=8,
-                               values=["30", "60", "90", "180", "365"], state="readonly")
-        days_cb.pack(side="left")
+        now = datetime.now()
 
-        tk.Label(ctrl, text="days", font=("Arial", 11), bg="#FAF3E1").pack(side="left", padx=(4, 16))
+        self.month_var = tk.StringVar(value=MONTHS[now.month - 2] if now.month > 1 else "December")
+        month_cb = ttk.Combobox(ctrl, textvariable=self.month_var, width=12,
+                                values=MONTHS, state="readonly")
+        month_cb.pack(side="left")
 
-        tk.Button(ctrl, text="Archive Now", command=self._archive_sales,
+        current_year = now.year
+        self.year_var = tk.StringVar(value=str(current_year if now.month > 1 else current_year - 1))
+        year_cb = ttk.Combobox(ctrl, textvariable=self.year_var, width=6,
+                               values=[str(y) for y in range(current_year - 5, current_year + 1)],
+                               state="readonly")
+        year_cb.pack(side="left", padx=(4, 16))
+
+        tk.Button(ctrl, text="Archive Month", command=self._archive_sales,
                   bg="#FF6600", fg="white", font=("Arial", 11, "bold"),
                   width=14, relief="raised").pack(side="left", padx=4)
 
@@ -98,60 +116,64 @@ class SalesArchive:
         for row in rows:
             tid, date, total, payment, change, archived = row
             self.tree.insert("", "end", iid=str(tid),
-                             values=(tid, date, f"₱{total:.2f}",
-                                     f"₱{payment:.2f}", f"₱{change:.2f}", archived))
+                             values=(tid, date, f"\u20b1{total:.2f}",
+                                     f"\u20b1{payment:.2f}", f"\u20b1{change:.2f}", archived))
 
         count = len(rows)
         total_val = sum(r[2] for r in rows)
         self.summary_var.set(
-            f"Archived records: {count}  |  Total archived sales: ₱{total_val:.2f}"
+            f"Archived records: {count}  |  Total archived sales: \u20b1{total_val:.2f}"
         )
 
     def _archive_sales(self):
-        days = int(self.days_var.get())
-        cutoff = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+        month = MONTHS.index(self.month_var.get()) + 1
+        year = int(self.year_var.get())
+        date_from, date_to = _month_range(year, month)
+        label = f"{self.month_var.get()} {year}"
+
+        # Prevent archiving current month
+        now = datetime.now()
+        if year == now.year and month == now.month:
+            messagebox.showwarning("Archive", "Cannot archive the current month.")
+            return
 
         conn = connect_db()
         with conn:
             cur = conn.cursor()
-            cur.execute("SELECT COUNT(*) FROM transactions WHERE DATE(date) < ?", (cutoff,))
+            cur.execute("SELECT COUNT(*) FROM transactions WHERE DATE(date) BETWEEN ? AND ?",
+                        (date_from, date_to))
             count = cur.fetchone()[0]
-
         conn.close()
 
         if count == 0:
-            messagebox.showinfo("Archive", f"No transactions older than {days} days found.")
+            messagebox.showinfo("Archive", f"No transactions found for {label}.")
             return
 
         if not messagebox.askyesno("Confirm Archive",
-                                   f"Archive {count} transaction(s) older than {days} days?\n"
-                                   f"(Cutoff: {cutoff})"):
+                                   f"Archive {count} transaction(s) for {label}?"):
             return
 
         conn = connect_db()
         with conn:
             cur = conn.cursor()
-
-            # Move transactions
             cur.execute("""INSERT INTO transaction_archive (id, total, payment, change, date)
-                           SELECT id, total, payment, change, date
-                           FROM transactions WHERE DATE(date) < ?""", (cutoff,))
-
-            # Move transaction items
+                           SELECT id, total, payment, change, date FROM transactions
+                           WHERE DATE(date) BETWEEN ? AND ?""", (date_from, date_to))
             cur.execute("""INSERT INTO transaction_items_archive
                            (id, transaction_id, product_id, quantity, subtotal)
                            SELECT ti.id, ti.transaction_id, ti.product_id, ti.quantity, ti.subtotal
                            FROM transaction_items ti
                            JOIN transactions t ON ti.transaction_id = t.id
-                           WHERE DATE(t.date) < ?""", (cutoff,))
-
-            # Delete from main tables
+                           WHERE DATE(t.date) BETWEEN ? AND ?""", (date_from, date_to))
             cur.execute("""DELETE FROM transaction_items WHERE transaction_id IN
-                           (SELECT id FROM transactions WHERE DATE(date) < ?)""", (cutoff,))
-            cur.execute("DELETE FROM transactions WHERE DATE(date) < ?", (cutoff,))
-
+                           (SELECT id FROM transactions WHERE DATE(date) BETWEEN ? AND ?)""",
+                        (date_from, date_to))
+            cur.execute("DELETE FROM transactions WHERE DATE(date) BETWEEN ? AND ?",
+                        (date_from, date_to))
         conn.close()
-        messagebox.showinfo("Archive Successful", f"{count} transaction(s) archived successfully.")
+
+        messagebox.showinfo("Archive Successful",
+                            f"{count} transaction(s) for {label} archived successfully.")
         self._load_archived()
 
     def _restore_selected(self):
