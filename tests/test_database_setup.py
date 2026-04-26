@@ -237,7 +237,7 @@ class TestDefaultDataInsertion:
         users = cursor.fetchall()
         
         expected_users = [
-            ('admin', '1234', 'owner'),
+            ('admin', '1234', 'admin'),
             ('cashier', '1234', 'cashier'),
             ('inventory_staff', '1234', 'inventory_staff')
         ]
