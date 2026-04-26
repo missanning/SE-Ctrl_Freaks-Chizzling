@@ -28,6 +28,7 @@ jobs:
             style
             refactor
             test
+            merge
           requireScope: false
 
   check-commit-message:
