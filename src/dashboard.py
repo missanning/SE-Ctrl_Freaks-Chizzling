@@ -42,6 +42,7 @@ class Dashboard(DashboardViews):
             ("Revenue Analysis",  self.show_revenue_analysis,     "#17A2B8", "white"),
             ("View Transactions", self.open_transaction_analytics,"#6F42C1", "white"),
             ("Export Report",     self.open_export_dialog,        "#FF6600", "white"),
+            ("User Management",   self.open_user_management,      "#343A40", "white"),
             ("Logout",            self.logout_and_redirect,       "#DC3545", "white"),
         ]
         for col, (text, cmd, bg, fg) in enumerate(buttons):
@@ -95,6 +96,11 @@ class Dashboard(DashboardViews):
                              cwd=os.path.dirname(__file__))
         except Exception as e:
             print(f"Error opening transaction analytics: {e}")
+
+    def open_user_management(self):
+        from UserManagement import UserManagement
+        win = tk.Toplevel(self.root)
+        UserManagement(win)
 
     def logout_and_redirect(self):
         try:
