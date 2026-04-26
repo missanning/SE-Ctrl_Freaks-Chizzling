@@ -42,6 +42,7 @@ class Dashboard(DashboardViews):
             ("Revenue Analysis",  self.show_revenue_analysis,     "#17A2B8", "white"),
             ("View Transactions", self.open_transaction_analytics,"#6F42C1", "white"),
             ("Export Report",     self.open_export_dialog,        "#FF6600", "white"),
+            ("Archive Sales",     self.open_sales_archive,        "#5A6268", "white"),
             ("User Management",   self.open_user_management,      "#343A40", "white"),
             ("Logout",            self.logout_and_redirect,       "#DC3545", "white"),
         ]
@@ -89,6 +90,13 @@ class Dashboard(DashboardViews):
         tk.Button(win, text="Cancel", command=win.destroy,
                   bg="#6C757D", fg="white", font=("Arial", 10
                   )).pack(pady=(15, 0))
+
+    def open_sales_archive(self):
+        try:
+            subprocess.Popen([sys.executable, "sales_archive.py"],
+                             cwd=os.path.dirname(__file__))
+        except Exception as e:
+            print(f"Error opening sales archive: {e}")
 
     def open_transaction_analytics(self):
         try:
