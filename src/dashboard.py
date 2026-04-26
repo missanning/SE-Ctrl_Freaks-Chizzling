@@ -98,7 +98,7 @@ class Dashboard(DashboardViews):
             print(f"Error opening transaction analytics: {e}")
 
     def open_user_management(self):
-        from UserManagement import UserManagement
+        from user_management import UserManagement
         win = tk.Toplevel(self.root)
         UserManagement(win)
 
