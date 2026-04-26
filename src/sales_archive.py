@@ -72,13 +72,26 @@ class SalesArchive:
                   bg="#FF6600", fg="white", font=("Arial", 11, "bold"),
                   width=14, relief="raised").pack(side="left", padx=4)
 
-        tk.Button(ctrl, text="Restore Selected", command=self._restore_selected,
-                  bg="#28A745", fg="white", font=("Arial", 11, "bold"),
-                  width=16, relief="raised").pack(side="left", padx=4)
+        # Restore section
+        tk.Label(ctrl, text="  |  Restore month:",
+                 font=("Arial", 11), bg="#FAF3E1").pack(side="left", padx=(8, 8))
 
-        tk.Button(ctrl, text="Delete Selected", command=self._delete_selected,
-                  bg="#DC3545", fg="white", font=("Arial", 11, "bold"),
+        self.restore_month_var = tk.StringVar(value=MONTHS[now.month - 2] if now.month > 1 else "December")
+        ttk.Combobox(ctrl, textvariable=self.restore_month_var, width=12,
+                     values=MONTHS, state="readonly").pack(side="left")
+
+        self.restore_year_var = tk.StringVar(value=str(current_year if now.month > 1 else current_year - 1))
+        ttk.Combobox(ctrl, textvariable=self.restore_year_var, width=6,
+                     values=[str(y) for y in range(current_year - 5, current_year + 1)],
+                     state="readonly").pack(side="left", padx=(4, 8))
+
+        tk.Button(ctrl, text="Restore Month", command=self._restore_by_month,
+                  bg="#28A745", fg="white", font=("Arial", 11, "bold"),
                   width=14, relief="raised").pack(side="left", padx=4)
+
+        tk.Button(ctrl, text="Delete Month", command=self._delete_by_month,
+                  bg="#DC3545", fg="white", font=("Arial", 11, "bold"),
+                  width=13, relief="raised").pack(side="left", padx=4)
 
         # Summary label
         self.summary_var = tk.StringVar(value="")
@@ -174,6 +187,93 @@ class SalesArchive:
 
         messagebox.showinfo("Archive Successful",
                             f"{count} transaction(s) for {label} archived successfully.")
+        self._load_archived()
+
+    def _restore_by_month(self):
+        month = MONTHS.index(self.restore_month_var.get()) + 1
+        year = int(self.restore_year_var.get())
+        date_from, date_to = _month_range(year, month)
+        label = f"{self.restore_month_var.get()} {year}"
+
+        conn = connect_db()
+        with conn:
+            cur = conn.cursor()
+            cur.execute("SELECT COUNT(*) FROM transaction_archive WHERE DATE(date) BETWEEN ? AND ?",
+                        (date_from, date_to))
+            count = cur.fetchone()[0]
+        conn.close()
+
+        if count == 0:
+            messagebox.showinfo("Restore", f"No archived transactions found for {label}.")
+            return
+
+        if not messagebox.askyesno("Confirm Restore",
+                                   f"Restore {count} transaction(s) for {label} back to active records?"):
+            return
+
+        conn = connect_db()
+        with conn:
+            cur = conn.cursor()
+            cur.execute("""INSERT OR IGNORE INTO transactions (id, total, payment, change, date)
+                           SELECT id, total, payment, change, date FROM transaction_archive
+                           WHERE DATE(date) BETWEEN ? AND ?""", (date_from, date_to))
+            cur.execute("""INSERT OR IGNORE INTO transaction_items
+                           (id, transaction_id, product_id, quantity, subtotal)
+                           SELECT id, transaction_id, product_id, quantity, subtotal
+                           FROM transaction_items_archive
+                           WHERE transaction_id IN (
+                               SELECT id FROM transaction_archive
+                               WHERE DATE(date) BETWEEN ? AND ?
+                           )""", (date_from, date_to))
+            cur.execute("""DELETE FROM transaction_items_archive
+                           WHERE transaction_id IN (
+                               SELECT id FROM transaction_archive
+                               WHERE DATE(date) BETWEEN ? AND ?
+                           )""", (date_from, date_to))
+            cur.execute("DELETE FROM transaction_archive WHERE DATE(date) BETWEEN ? AND ?",
+                        (date_from, date_to))
+        conn.close()
+
+        messagebox.showinfo("Restore Successful",
+                            f"{count} transaction(s) for {label} restored successfully.")
+        self._load_archived()
+
+    def _delete_by_month(self):
+        month = MONTHS.index(self.restore_month_var.get()) + 1
+        year = int(self.restore_year_var.get())
+        date_from, date_to = _month_range(year, month)
+        label = f"{self.restore_month_var.get()} {year}"
+
+        conn = connect_db()
+        with conn:
+            cur = conn.cursor()
+            cur.execute("SELECT COUNT(*) FROM transaction_archive WHERE DATE(date) BETWEEN ? AND ?",
+                        (date_from, date_to))
+            count = cur.fetchone()[0]
+        conn.close()
+
+        if count == 0:
+            messagebox.showinfo("Delete", f"No archived transactions found for {label}.")
+            return
+
+        if not messagebox.askyesno("Confirm Delete",
+                                   f"Permanently delete {count} archived transaction(s) for {label}?\n"
+                                   "This cannot be undone."):
+            return
+
+        conn = connect_db()
+        with conn:
+            cur = conn.cursor()
+            cur.execute("""DELETE FROM transaction_items_archive
+                           WHERE transaction_id IN (
+                               SELECT id FROM transaction_archive
+                               WHERE DATE(date) BETWEEN ? AND ?
+                           )""", (date_from, date_to))
+            cur.execute("DELETE FROM transaction_archive WHERE DATE(date) BETWEEN ? AND ?",
+                        (date_from, date_to))
+        conn.close()
+
+        messagebox.showinfo("Deleted", f"{count} record(s) for {label} permanently deleted.")
         self._load_archived()
 
     def _restore_selected(self):
