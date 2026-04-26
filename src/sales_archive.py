@@ -98,6 +98,25 @@ class SalesArchive:
         tk.Label(self.root, textvariable=self.summary_var,
                  font=("Arial", 10), bg="#FAF3E1", fg="#555").pack(anchor="w", padx=20)
 
+        # View filter row
+        view_row = tk.Frame(self.root, bg="#FAF3E1")
+        view_row.pack(fill="x", padx=20, pady=(0, 6))
+
+        tk.Label(view_row, text="View month:", font=("Arial", 11), bg="#FAF3E1").pack(side="left", padx=(0, 8))
+
+        self.view_month_var = tk.StringVar(value="All")
+        ttk.Combobox(view_row, textvariable=self.view_month_var, width=12,
+                     values=["All"] + MONTHS, state="readonly").pack(side="left")
+
+        self.view_year_var = tk.StringVar(value=str(current_year))
+        ttk.Combobox(view_row, textvariable=self.view_year_var, width=6,
+                     values=[str(y) for y in range(current_year - 5, current_year + 1)],
+                     state="readonly").pack(side="left", padx=(4, 8))
+
+        tk.Button(view_row, text="View", command=self._load_archived,
+                  bg="#007BFF", fg="white", font=("Arial", 11, "bold"),
+                  width=8, relief="raised").pack(side="left", padx=4)
+
         # Table
         table_frame = tk.Frame(self.root, bg="#FAF3E1")
         table_frame.pack(fill="both", expand=True, padx=20, pady=(0, 20))
@@ -121,8 +140,18 @@ class SalesArchive:
         conn = connect_db()
         with conn:
             cur = conn.cursor()
-            cur.execute("""SELECT id, date, total, payment, change, archived_date
-                           FROM transaction_archive ORDER BY archived_date DESC""")
+            view_month = self.view_month_var.get()
+            if view_month == "All":
+                cur.execute("""SELECT id, date, total, payment, change, archived_date
+                               FROM transaction_archive ORDER BY date DESC""")
+            else:
+                month = MONTHS.index(view_month) + 1
+                year = int(self.view_year_var.get())
+                date_from, date_to = _month_range(year, month)
+                cur.execute("""SELECT id, date, total, payment, change, archived_date
+                               FROM transaction_archive
+                               WHERE DATE(date) BETWEEN ? AND ?
+                               ORDER BY date DESC""", (date_from, date_to))
             rows = cur.fetchall()
         conn.close()
 
@@ -134,8 +163,10 @@ class SalesArchive:
 
         count = len(rows)
         total_val = sum(r[2] for r in rows)
+        view_month = self.view_month_var.get()
+        period = f"{view_month} {self.view_year_var.get()}" if view_month != "All" else "All months"
         self.summary_var.set(
-            f"Archived records: {count}  |  Total archived sales: \u20b1{total_val:.2f}"
+            f"Showing: {period}  |  Records: {count}  |  Total: \u20b1{total_val:.2f}"
         )
 
     def _archive_sales(self):
