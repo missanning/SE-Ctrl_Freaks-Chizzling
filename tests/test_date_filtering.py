@@ -36,9 +36,9 @@ def temp_db():
     today = datetime.now()
     today_str = today.strftime("%Y-%m-%d")
     yesterday_str = (today - timedelta(days=1)).strftime("%Y-%m-%d")
-    # Use a day that is always within this week but never today
-    days_since_monday = today.weekday()
-    this_week_not_today_str = (today - timedelta(days=max(1, days_since_monday))).strftime("%Y-%m-%d")
+    # Pick a day within this week that is never today: use tomorrow if Monday, else yesterday
+    offset = 1 if today.weekday() == 0 else -1
+    this_week_not_today_str = (today + timedelta(days=offset)).strftime("%Y-%m-%d")
     last_week_str = (today - timedelta(days=10)).strftime("%Y-%m-%d")
 
     cursor.executemany(
