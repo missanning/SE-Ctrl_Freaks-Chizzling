@@ -69,8 +69,8 @@ def temp_db():
 
     now = datetime.now()
     today = now.strftime("%Y-%m-%d")
-    days_since_monday = now.weekday()
-    this_week_not_today = (now - timedelta(days=max(1, days_since_monday))).strftime("%Y-%m-%d")
+    offset = 1 if now.weekday() == 0 else -1
+    this_week_not_today = (now + timedelta(days=offset)).strftime("%Y-%m-%d")
     last_week = (now - timedelta(days=10)).strftime("%Y-%m-%d")
 
     cursor.executemany(
