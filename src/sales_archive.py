@@ -40,7 +40,6 @@ class SalesArchive:
         self.root.configure(bg="#FAF3E1")
         _ensure_archive_tables()
         self._build_ui()
-        self._load_archived()
 
     def _build_ui(self):
         # Header
@@ -135,7 +134,9 @@ class SalesArchive:
         self.tree.pack(side="left", fill="both", expand=True)
         vsb.pack(side="right", fill="y")
 
-    def _load_archived(self):
+    def _load_archived(self, auto=False):
+        if auto:
+            return
         self.tree.delete(*self.tree.get_children())
         conn = connect_db()
         with conn:
