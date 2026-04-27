@@ -7,10 +7,11 @@ except ImportError:
     ImageTk = None
 
 class QuantityDialog:
-    def __init__(self, parent, product, cart_manager):
+    def __init__(self, parent, product, cart_manager, img_cache=None):
         self.parent = parent
         self.product = product
         self.cart_manager = cart_manager
+        self._img_cache = img_cache or {}
         self.show_dialog()
     
     def get_product_image_path(self, product_name):
@@ -85,15 +86,16 @@ class QuantityDialog:
         try:
             if Image and ImageTk:
                 img_path = self.get_product_image_path(self.product[1])
-                if os.path.exists(img_path):
-                    pil_img = Image.open(img_path)
-                    pil_img = pil_img.resize((200, 150), Image.LANCZOS)
-                    photo = ImageTk.PhotoImage(pil_img)
-                    img_label = tk.Label(self.dialog, image=photo, bg="#FFFFFF")
-                    img_label.image = photo
-                    img_label.pack(pady=20)
-                else:
-                    tk.Label(self.dialog, text="[No Image]", bg="#FFFFFF", width=25, height=10).pack(pady=20)
+                if img_path not in self._img_cache:
+                    if os.path.exists(img_path):
+                        pil_img = Image.open(img_path).resize((200, 150), Image.LANCZOS)
+                    else:
+                        pil_img = Image.new('RGB', (200, 150), color='lightgray')
+                    self._img_cache[img_path] = ImageTk.PhotoImage(pil_img)
+                photo = self._img_cache[img_path]
+                img_label = tk.Label(self.dialog, image=photo, bg="#FFFFFF")
+                img_label.image = photo
+                img_label.pack(pady=20)
             else:
                 tk.Label(self.dialog, text="[No Image]", bg="#FFFFFF", width=25, height=10).pack(pady=20)
         except Exception:

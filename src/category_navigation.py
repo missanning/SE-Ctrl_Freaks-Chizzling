@@ -82,8 +82,13 @@ class CategoryNavigation:
         )
         cancel_btn.grid(row=0, column=5, padx=10, pady=5)
 
-        # Set default category
-        self.set_active_category("all")
+        # Set default category without triggering load (load is deferred in ChizzlingPOS)
+        self.current_category = "all"
+        for cat, label in self.category_labels.items():
+            if cat == "all":
+                label.config(image=self.all_img_active)
+            else:
+                label.config(image=getattr(self, f"{cat}_img_inactive"))
     
     def set_active_category(self, category):
         """Set the active category and update display"""
