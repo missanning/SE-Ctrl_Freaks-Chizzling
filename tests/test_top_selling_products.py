@@ -67,15 +67,17 @@ def temp_db():
         ]
     )
 
-    today = datetime.now().strftime("%Y-%m-%d")
-    monday = (datetime.now() - timedelta(days=datetime.now().weekday())).strftime("%Y-%m-%d")
-    last_week = (datetime.now() - timedelta(days=10)).strftime("%Y-%m-%d")
+    now = datetime.now()
+    today = now.strftime("%Y-%m-%d")
+    days_since_monday = now.weekday()
+    this_week_not_today = (now - timedelta(days=max(1, days_since_monday))).strftime("%Y-%m-%d")
+    last_week = (now - timedelta(days=10)).strftime("%Y-%m-%d")
 
     cursor.executemany(
         "INSERT INTO transactions (total, payment, change, date) VALUES (?, ?, ?, ?)",
         [
             (995.0, 1000.0, 5.0,  f"{today} 10:00:00"),
-            (400.0, 400.0,  0.0,  f"{monday} 09:00:00"),
+            (400.0, 400.0,  0.0,  f"{this_week_not_today} 09:00:00"),
             (300.0, 300.0,  0.0,  f"{last_week} 10:00:00"),
         ]
     )
