@@ -200,6 +200,11 @@ class MainApp:
         username = self.entry_username.get()
         password = self.entry_password.get()
 
+        if not username or not password:
+            self.display_label.config(text="Please input a valid username and password")
+            messagebox.showerror("Error", "Please input a valid username and password")
+            return
+
         con = connect_db()
         cursor = con.cursor()
         cursor.execute("SELECT role FROM users WHERE username=? AND password=?", (username, password))
