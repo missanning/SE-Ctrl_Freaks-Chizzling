@@ -76,6 +76,29 @@ def create_tables():
     )
     """)
 
+    # TRANSACTION ARCHIVE TABLE
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS transaction_archive (
+        id INTEGER PRIMARY KEY,
+        total REAL,
+        payment REAL,
+        change REAL,
+        date TIMESTAMP,
+        archived_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    # TRANSACTION ITEMS ARCHIVE TABLE
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS transaction_items_archive (
+        id INTEGER PRIMARY KEY,
+        transaction_id INTEGER,
+        product_id INTEGER,
+        quantity INTEGER,
+        subtotal REAL
+    )
+    """)
+
     # TRANSACTION ITEMS TABLE
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS transaction_items (

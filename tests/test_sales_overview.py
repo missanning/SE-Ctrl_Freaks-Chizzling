@@ -31,9 +31,11 @@ def temp_db():
     )
     """)
 
-    today = datetime.now().strftime("%Y-%m-%d")
-    monday = (datetime.now() - timedelta(days=datetime.now().weekday())).strftime("%Y-%m-%d")
-    last_week = (datetime.now() - timedelta(days=10)).strftime("%Y-%m-%d")
+    now = datetime.now()
+    today = now.strftime("%Y-%m-%d")
+    offset = 1 if now.weekday() == 0 else -1
+    this_week_not_today = (now + timedelta(days=offset)).strftime("%Y-%m-%d")
+    last_week = (now - timedelta(days=10)).strftime("%Y-%m-%d")
 
     transactions = [
         # Today's transactions
@@ -41,8 +43,8 @@ def temp_db():
         (80.0,  100.0, 20.0, f"{today} 11:00:00"),
         (39.0,  40.0,  1.0,  f"{today} 12:00:00"),
         # This week (not today)
-        (150.0, 150.0, 0.0,  f"{monday} 09:00:00"),
-        (250.0, 300.0, 50.0, f"{monday} 14:00:00"),
+        (150.0, 150.0, 0.0,  f"{this_week_not_today} 09:00:00"),
+        (250.0, 300.0, 50.0, f"{this_week_not_today} 14:00:00"),
         # Last week (outside current week)
         (500.0, 500.0, 0.0,  f"{last_week} 10:00:00"),
     ]

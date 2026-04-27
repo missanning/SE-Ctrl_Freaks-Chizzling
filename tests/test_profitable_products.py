@@ -65,19 +65,21 @@ def temp_db():
         ]
     )
 
-    today = datetime.now().strftime("%Y-%m-%d")
-    monday = (datetime.now() - timedelta(days=datetime.now().weekday())).strftime("%Y-%m-%d")
-    first_of_month = datetime.now().replace(day=1).strftime("%Y-%m-%d")
-    last_month = (datetime.now() - timedelta(days=40)).strftime("%Y-%m-%d")
+    now = datetime.now()
+    today = now.strftime("%Y-%m-%d")
+    offset = 1 if now.weekday() == 0 else -1
+    this_week_not_today = (now + timedelta(days=offset)).strftime("%Y-%m-%d")
+    first_of_month = now.replace(day=1).strftime("%Y-%m-%d")
+    last_month = (now - timedelta(days=40)).strftime("%Y-%m-%d")
 
     # Transactions
     cursor.executemany(
         "INSERT INTO transactions (total, payment, change, date) VALUES (?, ?, ?, ?)",
         [
-            (398.0, 400.0, 2.0,  f"{today} 10:00:00"),       # id=1 today
-            (160.0, 200.0, 40.0, f"{monday} 09:00:00"),       # id=2 this week
-            (117.0, 120.0, 3.0,  f"{first_of_month} 08:00:00"), # id=3 this month
-            (300.0, 300.0, 0.0,  f"{last_month} 10:00:00"),   # id=4 last month
+            (398.0, 400.0, 2.0,  f"{today} 10:00:00"),              # id=1 today
+            (160.0, 200.0, 40.0, f"{this_week_not_today} 09:00:00"), # id=2 this week
+            (117.0, 120.0, 3.0,  f"{first_of_month} 08:00:00"),     # id=3 this month
+            (300.0, 300.0, 0.0,  f"{last_month} 10:00:00"),         # id=4 last month
         ]
     )
 
