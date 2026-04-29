@@ -38,8 +38,13 @@ class SalesArchive:
         self.root.title("Sales Archive - Chizzling POS")
         self.root.geometry("1000x650")
         self.root.configure(bg="#FAF3E1")
+        self.root.update_idletasks()
+        sw = self.root.winfo_screenwidth()
+        sh = self.root.winfo_screenheight()
+        self.root.geometry(f"1000x650+{(sw-1000)//2}+{(sh-650)//2}")
         _ensure_archive_tables()
         self._build_ui()
+        self._load_archived(auto=True)
 
     def _build_ui(self):
         # Header
@@ -135,8 +140,6 @@ class SalesArchive:
         vsb.pack(side="right", fill="y")
 
     def _load_archived(self, auto=False):
-        if auto:
-            return
         self.tree.delete(*self.tree.get_children())
         conn = connect_db()
         with conn:

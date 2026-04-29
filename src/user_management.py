@@ -11,6 +11,10 @@ class UserManagement:
         self.root.title("User Management")
         self.root.geometry("700x500")
         self.root.configure(bg="#FAF3E1")
+        self.root.update_idletasks()
+        sw = self.root.winfo_screenwidth()
+        sh = self.root.winfo_screenheight()
+        self.root.geometry(f"700x500+{(sw-700)//2}+{(sh-500)//2}")
         self._build_ui()
         self.load_users()
 

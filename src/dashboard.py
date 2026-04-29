@@ -15,6 +15,7 @@ class Dashboard(DashboardViews):
         self.root.configure(bg="#FAF3E1")
         self._proc_archive = None
         self._win_analytics = None
+        self._win_user_mgmt = None
         self._build_layout()
         self.show_daily_sales()
 
@@ -114,9 +115,13 @@ class Dashboard(DashboardViews):
         TransactionAnalyticsApp(self._win_analytics)
 
     def open_user_management(self):
+        if self._win_user_mgmt and tk.Toplevel.winfo_exists(self._win_user_mgmt):
+            self._win_user_mgmt.lift()
+            self._win_user_mgmt.focus_force()
+            return
         from user_management import UserManagement
-        win = tk.Toplevel(self.root)
-        UserManagement(win)
+        self._win_user_mgmt = tk.Toplevel(self.root)
+        UserManagement(self._win_user_mgmt)
 
     def logout_and_redirect(self):
         try:
