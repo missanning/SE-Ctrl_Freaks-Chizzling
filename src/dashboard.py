@@ -13,6 +13,8 @@ class Dashboard(DashboardViews):
         self.root.title("Sales Dashboard - Chizzling POS")
         self.root.state('zoomed')
         self.root.configure(bg="#FAF3E1")
+        self._proc_archive = None
+        self._win_analytics = None
         self._build_layout()
         self.show_daily_sales()
 
@@ -93,17 +95,23 @@ class Dashboard(DashboardViews):
 
     def open_sales_archive(self):
         try:
-            subprocess.Popen([sys.executable, "sales_archive.py"],
-                             cwd=os.path.dirname(__file__))
+            if self._proc_archive is None or self._proc_archive.poll() is not None:
+                self._proc_archive = subprocess.Popen(
+                    [sys.executable, "sales_archive.py"],
+                    cwd=os.path.dirname(__file__))
         except Exception as e:
             print(f"Error opening sales archive: {e}")
 
     def open_transaction_analytics(self):
-        try:
-            subprocess.Popen([sys.executable, "transaction_analytics_app.py"],
-                             cwd=os.path.dirname(__file__))
-        except Exception as e:
-            print(f"Error opening transaction analytics: {e}")
+        # If window exists and is still open, bring it to front
+        if self._win_analytics and tk.Toplevel.winfo_exists(self._win_analytics):
+            self._win_analytics.lift()
+            self._win_analytics.focus_force()
+            return
+        # Otherwise open a new window
+        from transaction_analytics_app import TransactionAnalyticsApp
+        self._win_analytics = tk.Toplevel(self.root)
+        TransactionAnalyticsApp(self._win_analytics)
 
     def open_user_management(self):
         from user_management import UserManagement
