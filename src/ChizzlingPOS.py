@@ -33,6 +33,7 @@ class ChizzlingPOS:
         # Initialize components
         self.products = []
         self.setup_components()
+        self.root.update()
         self.load_products()
     
     def setup_components(self):
@@ -80,7 +81,7 @@ class ChizzlingPOS:
     
     def show_quantity_dialog(self, product):
         """Show quantity selection dialog"""
-        QuantityDialog(self.root, product, self.cart_manager)
+        QuantityDialog(self.root, product, self.cart_manager, self.product_display._img_cache)
     
     def cancel_order(self):
         """Cancel the current order"""

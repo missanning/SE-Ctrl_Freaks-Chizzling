@@ -12,6 +12,7 @@ class ProductDisplay:
         self.pos = pos_instance
         self.selected_product = None
         self.product_click_count = {}
+        self._img_cache = {}
         self.create_product_frame()
     
     def get_product_image_path(self, product_name):
@@ -136,13 +137,13 @@ class ProductDisplay:
             try:
                 if Image and ImageTk:
                     img_path = self.get_product_image_path(product[1])
-                    if os.path.exists(img_path):
-                        pil_img = Image.open(img_path)
-                        pil_img = pil_img.resize((195, 180), Image.LANCZOS)
-                        photo = ImageTk.PhotoImage(pil_img)
-                    else:
-                        pil_img = Image.new('RGB', (195, 180), color='lightgray')
-                        photo = ImageTk.PhotoImage(pil_img)
+                    if img_path not in self._img_cache:
+                        if os.path.exists(img_path):
+                            pil_img = Image.open(img_path).resize((195, 180), Image.LANCZOS)
+                        else:
+                            pil_img = Image.new('RGB', (195, 180), color='lightgray')
+                        self._img_cache[img_path] = ImageTk.PhotoImage(pil_img)
+                    photo = self._img_cache[img_path]
                 else:
                     photo = None
                 

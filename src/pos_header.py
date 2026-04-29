@@ -17,6 +17,12 @@ class POSHeader:
         self.parent = parent
         self.create_header()
     
+    def _do_resize(self, label, w, h):
+        resized = self.header_pil.resize((w, h), Image.LANCZOS)
+        self.header_img = ImageTk.PhotoImage(resized)
+        label.config(image=self.header_img)
+        label.image = self.header_img
+
     def logout_and_redirect(self):
         """Logout and redirect to login page"""
         try:
@@ -49,10 +55,11 @@ class POSHeader:
             def _resize_header(event):
                 if event.width <= 1 or event.height <= 1:
                     return
-                resized = self.header_pil.resize((event.width, event.height), Image.LANCZOS)
-                self.header_img = ImageTk.PhotoImage(resized)
-                header_label.config(image=self.header_img)
-                header_label.image = self.header_img
+                if hasattr(self, '_last_resize_width') and self._last_resize_width == event.width:
+                    return
+                self._last_resize_width = event.width
+                self.parent.after_cancel(self._resize_job) if hasattr(self, '_resize_job') else None
+                self._resize_job = self.parent.after(150, lambda w=event.width, h=event.height: self._do_resize(header_label, w, h))
 
             header.bind("<Configure>", _resize_header)
         else:
