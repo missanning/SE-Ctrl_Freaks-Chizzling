@@ -16,6 +16,8 @@ class ProductManagementSystem:
         self.root.title("Product Management System")
         self.root.geometry("1200x600")
 
+        self.stocks = 30
+
         # TITLE
         tk.Label(root, text="Product Management System",
                  font=("Arial", 18, "bold")).pack(pady=10)
@@ -108,8 +110,23 @@ class ProductManagementSystem:
             self.tree.heading(col, text=col)
             self.tree.column(col, width=120)
 
+        low_items = []
+
         for row in rows:
-            self.tree.insert("", tk.END, values=row)
+            stock = row[3]
+
+            if stock <= self.stocks:
+                self.tree.insert("", tk.END, values=row, tags=("low_stock",))
+                self.tree.tag_configure("low_stock", background="salmon")
+                low_items.append(row[1])
+            else:
+                self.tree.insert("", tk.END, values=row)
+
+        if low_items:
+            messagebox.showwarning(
+                "Low Stock Alert",
+                f"Low stock: {', '.join(low_items)}"
+            )
 
         conn.close()
 
@@ -225,7 +242,6 @@ class ProductManagementSystem:
         self.root.destroy()
         new_window = tk.Tk()
         MainApp(new_window)
-
 
 # Add Product Window
 class AddProductWindow:

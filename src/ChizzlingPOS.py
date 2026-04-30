@@ -10,6 +10,7 @@ from category_navigation import CategoryNavigation
 from cart_manager import CartManager
 from quantity_dialog import QuantityDialog
 from receipt_module import show_receipt_window
+from autodeduct import auto_deduct_stock
 
 # Database connection
 def connect_db():
@@ -80,8 +81,21 @@ class ChizzlingPOS:
         self.product_display.display_products(self.products)
     
     def show_quantity_dialog(self, product):
-        """Show quantity selection dialog"""
-        QuantityDialog(self.root, product, self.cart_manager, self.product_display._img_cache)
+        product_id = product[0]
+
+        stock = self.get_stock(product_id)
+
+        # 🚫 BLOCK if no stock
+        if stock <= 0:
+            messagebox.showerror("Out of Stock", "This product is currently out of stock.")
+            return
+
+        QuantityDialog(
+            self.root,
+            product,
+            self.cart_manager,
+            self.product_display._img_cache
+    )
     
     def cancel_order(self):
         """Cancel the current order"""
@@ -118,7 +132,7 @@ class ChizzlingPOS:
                 INSERT INTO transaction_items (transaction_id, product_id, quantity, subtotal)
                 VALUES (?, ?, ?, ?)
             """, (transaction_id, item['id'], item['qty'], subtotal))
-
+        auto_deduct_stock(cursor, item['id'], item['qty'])
         conn.commit()
         conn.close()
 
@@ -133,6 +147,15 @@ class ChizzlingPOS:
         # Clear cart
         self.cart_manager.clear_cart()
 
+    # Get current stock for a product
+    def get_stock(self, product_id):
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT stock FROM products WHERE id = ?", (product_id,))
+        result = cursor.fetchone()
+        conn.close()
+        return result[0] if result else 0
+
 def main():
     """Main application entry point"""
     root = tk.Tk()
@@ -141,3 +164,11 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+"""
+Fix: Added function to get current stock for products that are out of stock. Disables the ability to add it to the cart
+
+Updates: 
+- Added new function to auto deduct and connect database from product management system. Added new function to get current stock for products that are out of stock. 
+- Added function to show products that are low on stock
+"""
