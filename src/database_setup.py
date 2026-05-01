@@ -293,43 +293,65 @@ def insert_default_data():
 
     # RECIPES (ingredient usage per menu item)
     recipes = [
-        # Sizzling Sisig Recipe
-        ("Sizzling Sisig", "Pork", 100, "grams"),
-        ("Sizzling Sisig", "Green Chili", 1, "pcs"),
-        ("Sizzling Sisig", "Egg", 1, "pcs"),
-        ("Sizzling Sisig", "Onion", 0.25, "pcs"),
-        ("Sizzling Sisig", "Butter", 5, "grams"),
-        ("Sizzling Sisig", "Seasoning", 0.5, "tsp"),
 
-        # Sizzling Liempo Recipe
-        ("Sizzling Liempo", "Liempo", 100, "grams"),
-        ("Sizzling Liempo", "Seasoning", 0.5, "tsp"),
-        ("Sizzling Liempo", "Oyster Sauce", 0.5, "tsp"),
+    # Sizzling Sisig (5 ingredients)
+    ("Sizzling Sisig", "Pork", 100, "grams"),
+    ("Sizzling Sisig", "Onion", 0.25, "pcs"),
+    ("Sizzling Sisig", "Egg", 1, "pcs"),
+    ("Sizzling Sisig", "Green Chili", 1, "pcs"),
+    ("Sizzling Sisig", "Seasoning", 0.5, "tsp"),
 
-        # Sizzling Tofu Recipe
-        ("Sizzling Tofu", "Tofu", 100, "grams"),
-        ("Sizzling Tofu", "Red Chili", 1, "pcs"),
-        ("Sizzling Tofu", "Onion", 0.25, "pcs"),
+    # Sizzling Liempo (4 ingredients)
+    ("Sizzling Liempo", "Liempo", 100, "grams"),
+    ("Sizzling Liempo", "Garlic", 0.5, "pcs"),
+    ("Sizzling Liempo", "Oyster Sauce", 0.5, "tsp"),
+    ("Sizzling Liempo", "Seasoning", 0.5, "tsp"),
 
-        # Nachos Recipe
-        ("Nachos", "Beef", 100, "grams"),
-        ("Nachos", "Cucumber", 0.25, "pcs"),
-        ("Nachos", "Tomato", 1, "pcs"),
+    # Sizzling Tofu (4 ingredients)
+    ("Sizzling Tofu", "Tofu", 100, "grams"),
+    ("Sizzling Tofu", "Onion", 0.25, "pcs"),
+    ("Sizzling Tofu", "Red Chili", 1, "pcs"),
+    ("Sizzling Tofu", "Oyster Sauce", 0.5, "tsp"),
 
-        # Porksilog Recipe
-        ("Porksilog", "Pork", 125, "grams"),
-        ("Porksilog", "Bread Crumbs", 10, "grams"),
-        ("Porksilog", "All Purpose Flour", 10, "grams"),
-        ("Porksilog", "Egg", 1, "pcs"),
+    # Chicken Tenders (4 ingredients) — FIXED NAME
+    ("Chicken Tenders", "Chicken Fillet", 150, "grams"),
+    ("Chicken Tenders", "All Purpose Flour", 10, "grams"),
+    ("Chicken Tenders", "Bread Crumbs", 10, "grams"),
+    ("Chicken Tenders", "Egg", 1, "pcs"),
 
-        # Chicken Tenders Recipe
-        ("Chicken Tenders - Cheese", "Chicken Fillet", 150, "grams"),
-        ("Chicken Tenders - Cheese", "Bread Crumbs", 10, "grams"),
-        ("Chicken Tenders - Cheese", "All Purpose Flour", 10, "grams"),
-        ("Chicken Tenders - Cheese", "Egg", 1, "pcs"),
+    # Nachos (4 ingredients)
+    ("Nachos", "Beef", 100, "grams"),
+    ("Nachos", "Tomato", 1, "pcs"),
+    ("Nachos", "Onion", 0.25, "pcs"),
+    ("Nachos", "Cheese", 2, "slices"),
 
-        # Fries Recipe
-        ("Fries - Cheese", "Potato Fries", 250, "grams"),
+    # Takoyaki - Cheese (5pcs)
+    ("Takoyaki - Cheese (5pcs)", "All Purpose Flour", 50, "grams"),
+    ("Takoyaki - Cheese (5pcs)", "Egg", 1, "pcs"),
+    ("Takoyaki - Cheese (5pcs)", "Cheese", 2, "slices"),
+    ("Takoyaki - Cheese (5pcs)", "Cooking Oil", 10, "ml"),
+    ("Takoyaki - Cheese (5pcs)", "Onion", 0.25, "pcs"),
+
+    # Takoyaki - Ham and Cheese (5pcs)
+    ("Takoyaki - Ham and Cheese (5pcs)", "All Purpose Flour", 50, "grams"),
+    ("Takoyaki - Ham and Cheese (5pcs)", "Egg", 1, "pcs"),
+    ("Takoyaki - Ham and Cheese (5pcs)", "Cheese", 2, "slices"),
+    ("Takoyaki - Ham and Cheese (5pcs)", "Ham", 2, "slices"),
+    ("Takoyaki - Ham and Cheese (5pcs)", "Cooking Oil", 10, "ml"),
+
+    # Takoyaki - Crab (5pcs)
+    ("Takoyaki - Crab (5pcs)", "All Purpose Flour", 50, "grams"),
+    ("Takoyaki - Crab (5pcs)", "Egg", 1, "pcs"),
+    ("Takoyaki - Crab (5pcs)", "Crab Stick", 2, "slices"),
+    ("Takoyaki - Crab (5pcs)", "Onion", 0.25, "pcs"),
+    ("Takoyaki - Crab (5pcs)", "Cooking Oil", 10, "ml"),
+
+    # Takoyaki - Overload (7pcs)
+    ("Takoyaki - Overload (7pcs)", "All Purpose Flour", 60, "grams"),
+    ("Takoyaki - Overload (7pcs)", "Egg", 1, "pcs"),
+    ("Takoyaki - Overload (7pcs)", "Cheese", 2, "slices"),
+    ("Takoyaki - Overload (7pcs)", "Ham", 2, "slices"),
+    ("Takoyaki - Overload (7pcs)", "Crab Stick", 2, "slices"),
     ]
 
     cursor.executemany(
