@@ -131,11 +131,6 @@ class MainApp:
         # Focus highlight for username - with Mac compatibility
         self.entry_username.bind("<FocusIn>", lambda e: self.on_focus_in(user_frame))
         self.entry_username.bind("<FocusOut>", lambda e: self.on_focus_out(user_frame))
-        
-        # Mac-specific: ensure entry is focusable
-        if IS_MAC:
-            self.entry_username.bind("<Button-1>", lambda e: self.entry_username.focus_set())
-            self.entry_password.bind("<Button-1>", lambda e: self.entry_password.focus_set())
 
         # Password
         tk.Label(card, text="Password", font=FONT_LABEL, bg=CARD_BG, fg=BROWN, anchor="w").pack(fill="x")
@@ -149,6 +144,12 @@ class MainApp:
         # Focus highlight for password
         self.entry_password.bind("<FocusIn>", lambda e: self.on_focus_in(pw_border))
         self.entry_password.bind("<FocusOut>", lambda e: self.on_focus_out(pw_border))
+        
+        # Mac-specific: ensure entry is focusable (must be after both entries are created)
+        if IS_MAC:
+            self.entry_username.bind("<Button-1>", lambda e: self.entry_username.focus_set())
+            self.entry_password.bind("<Button-1>", lambda e: self.entry_password.focus_set())
+
         self.show_password = False
         self.toggle_button = tk.Button(pw_frame, text="👁", bg=ENTRY_BG, fg=SUBTLE,
                                         relief="flat", bd=0, cursor="hand2",
