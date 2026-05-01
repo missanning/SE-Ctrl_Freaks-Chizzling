@@ -59,18 +59,6 @@ class ProductManagementSystem:
         tk.Button(right_frame, text="Refresh Products", width=22,
                   command=self.refresh_products).pack(pady=5)
 
-        # DELETE SECTION
-        tk.Label(right_frame, text="Enter Product ID to Delete").pack(pady=5)
-
-        delete_frame = tk.Frame(right_frame)
-        delete_frame.pack(pady=5)
-
-        self.entry = tk.Entry(delete_frame, width=15)
-        self.entry.pack(side=tk.LEFT, padx=5)
-
-        tk.Button(delete_frame, text="Delete",
-                  command=self.delete_product).pack(side=tk.LEFT)
-
         # ADD / EDIT
         tk.Button(right_frame, text="Add Product", width=22,
                   command=self.OpenAddProductWindow).pack(pady=5)
@@ -426,3 +414,9 @@ if __name__ == "__main__":
     root = tk.Tk()
     app = ProductManagementSystem(root)
     root.mainloop()
+
+
+"""
+Update:
+- Removed Delete Function 
+"""
