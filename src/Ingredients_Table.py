@@ -1,402 +1,414 @@
 import tkinter as tk
-from tkinter import ttk
-from Archive2 import ArchiveFeature2
-from LoginPage import MainApp
+from tkinter import ttk, messagebox
 from database_setup import connect_db
-from tkinter import messagebox
+
+try:
+    from Archive2 import ArchiveFeature2
+    ARCHIVE2_AVAILABLE = True
+except ImportError:
+    ARCHIVE2_AVAILABLE = False
+
+# ── Color palette (matches LoginPage) ──────────────────────────
+BG           = "#ffffff"
+ACCENT       = "#f5a623"
+YELLOW       = "#ffd966"
+BROWN        = "#7a3b10"
+FG           = "#3b1f0a"
+SUBTLE       = "#7a3b10"
+ENTRY_BG     = "#fff8ee"
+ENTRY_BORDER = "#f5a623"
+
+FONT_TITLE = ("Segoe UI", 13, "bold")
+FONT_LABEL = ("Segoe UI", 10, "bold")
+FONT_ENTRY = ("Segoe UI", 10)
+FONT_BTN   = ("Segoe UI", 10, "bold")
+FONT_SMALL = ("Segoe UI", 9)
+
+
+def styled_button(parent, text, command, bg=BROWN, fg=YELLOW, width=20):
+    return tk.Button(
+        parent, text=text, command=command,
+        bg=bg, fg=fg, activebackground=ACCENT, activeforeground=BROWN,
+        font=FONT_BTN, relief="flat", bd=0, padx=10, pady=6,
+        cursor="hand2", width=width
+    )
+
+
+def entry_field(parent, label_text):
+    tk.Label(parent, text=label_text, font=FONT_LABEL,
+             bg=BG, fg=BROWN, anchor="w").pack(fill="x", pady=(8, 0))
+    border = tk.Frame(parent, bg=ENTRY_BORDER, padx=1, pady=1)
+    border.pack(fill="x", pady=(2, 0))
+    e = tk.Entry(border, font=FONT_ENTRY, bg=ENTRY_BG, fg=FG,
+                 relief="flat", bd=0)
+    e.pack(fill="x", ipady=6, padx=4)
+    e.bind("<FocusIn>",  lambda ev: border.config(bg=ACCENT))
+    e.bind("<FocusOut>", lambda ev: border.config(bg=ENTRY_BORDER))
+    return e
 
 
 class IngredientsTableWindow:
     def __init__(self, root):
         self.root = root
-        self.root.title("Ingredients Table")
-        self.root.geometry("1000x600")
+        self.root.title("Chizzling — Ingredients Table")
+        self.root.state("zoomed")
+        self.root.configure(bg=BG)
 
-        # Low stock limits
-        self.low_grams = 5000
-        self.low_pcs = 200
-        self.low_tsp = 500
-        self.low_slices = 500
-        self.low_ml = 1500
+        # Low stock thresholds
+        self.low_limits = {
+            "grams": 5000, "pcs": 200,
+            "tsp": 500, "slices": 500, "ml": 1500
+        }
 
-        # TITLE
-        tk.Label(self.root, text="Ingredients Table",
-                 font=("Arial", 18, "bold")).pack(pady=10)
-
-        # MAIN FRAME
-        main_frame = tk.Frame(root)
-        main_frame.pack(fill="both", expand=True)
-
-        # LEFT (TABLE)
-        left_frame = tk.Frame(main_frame)
-        left_frame.grid(row=0, column=0, sticky="nsew")
-
-        # RIGHT (CONTROLS)
-        right_frame = tk.Frame(main_frame)
-        right_frame.grid(row=0, column=1, sticky="ns", padx=10)
-
-        # GRID CONFIG
-        main_frame.grid_columnconfigure(0, weight=3)
-        main_frame.grid_columnconfigure(1, weight=1)
-        main_frame.grid_rowconfigure(0, weight=1)
-
-        # =======================
-        # TABLE (LEFT)
-        # =======================
-        self.tree = ttk.Treeview(left_frame)
-        self.tree.pack(fill="both", expand=True)
-
+        self._build_ui()
         self.load_products()
+        self.root.after(100, self.root.focus_force)
+        self.root.bind_all("<Button-1>", self._fix_focus, add="+")
 
-        # =======================
-        # CONTROLS (RIGHT)
-        # =======================
+    def _fix_focus(self, event):
+        if isinstance(event.widget, tk.Entry):
+            event.widget.focus_set()
 
-        # SEARCH
-        tk.Label(right_frame, text="Search Ingredient").pack(pady=5)
+    # ── UI Layout ───────────────────────────────────────────────
 
-        self.search_bar2 = tk.Entry(right_frame, width=24)
-        self.search_bar2.pack(pady=5)
+    def _build_ui(self):
+        # Top banner
+        banner = tk.Frame(self.root, bg=BROWN, height=42)
+        banner.pack(fill="x", side="top")
+        banner.pack_propagate(False)
 
-        tk.Button(right_frame, text="Search Ingredient", width=22,
-                  command=self.search_product).pack(pady=5)
+        tk.Label(banner, text="Chizzling POS  ·  Ingredients Table",
+                 font=FONT_TITLE, bg=BROWN, fg=YELLOW).pack(side="left", padx=16, pady=8)
 
-        # REFRESH
-        tk.Button(right_frame, text="Refresh Ingredients", width=22,
-                  command=self.refresh_products).pack(pady=5)
+        tk.Frame(self.root, bg=ACCENT, height=4).pack(fill="x")
+        tk.Frame(self.root, bg=YELLOW, height=4).pack(fill="x")
 
-        tk.Button(right_frame, text="Add Ingredient", width=22,
-                  command=self.OpenAddProductWindow).pack(pady=5)
+        # Body
+        body = tk.Frame(self.root, bg=BG)
+        body.pack(fill="both", expand=True, padx=20, pady=16)
 
-        tk.Button(right_frame, text="Edit Ingredient", width=22,
-                  command=self.OpenEditProductWindow).pack(pady=5)
-        
-        # ARCHIVE
-        self.archive_entry = tk.Entry(right_frame, width=24)
-        self.archive_entry.pack(pady=10)
+        # Left — table
+        left = tk.Frame(body, bg=BG)
+        left.pack(side="left", fill="both", expand=True)
+        self._build_table(left)
 
-        tk.Button(right_frame, text="Archive Product", width=22,
-                  command=self.archive_products).pack(pady=5)
+        # Right — controls
+        right = tk.Frame(body, bg=BG, width=220)
+        right.pack(side="right", fill="y", padx=(16, 0))
+        right.pack_propagate(False)
+        self._build_controls(right)
 
-        tk.Button(right_frame, text="Go to Archive", width=22,
-                  command=self.OpenArchiveFeature).pack(pady=5)
-        
-        tk.Button(right_frame, text="Logout", width=22,
-                  command=self.OpenLoginPage).pack(pady=20)
+        # Bottom strip
+        tk.Frame(self.root, bg=YELLOW, height=4).pack(fill="x", side="bottom")
+        tk.Frame(self.root, bg=ACCENT, height=4).pack(fill="x", side="bottom")
+        tk.Frame(self.root, bg=BROWN, height=8).pack(fill="x", side="bottom")
 
-    def load_products(self):
+    def _build_table(self, parent):
+        # Search row
+        search_row = tk.Frame(parent, bg=BG)
+        search_row.pack(fill="x", pady=(0, 10))
+
+        tk.Label(search_row, text="Search:", font=FONT_LABEL,
+                 bg=BG, fg=BROWN).pack(side="left", padx=(0, 6))
+
+        search_border = tk.Frame(search_row, bg=ENTRY_BORDER, padx=1, pady=1)
+        search_border.pack(side="left", fill="x", expand=True)
+
+        self.search_var = tk.StringVar()
+        self.search_var.trace("w", lambda *a: self.search_product())
+        search_entry = tk.Entry(search_border, textvariable=self.search_var,
+                                font=FONT_ENTRY, bg=ENTRY_BG, fg=FG,
+                                relief="flat", bd=0)
+        search_entry.pack(fill="x", ipady=6, padx=4)
+        search_entry.bind("<FocusIn>",  lambda e: search_border.config(bg=ACCENT))
+        search_entry.bind("<FocusOut>", lambda e: search_border.config(bg=ENTRY_BORDER))
+
+        styled_button(search_row, "↺  Refresh", self.load_products,
+                      width=12).pack(side="right", padx=(8, 0))
+
+        # Treeview
+        style = ttk.Style()
+        style.theme_use("clam")
+        style.configure("Ingr.Treeview",
+                        background=ENTRY_BG, fieldbackground=ENTRY_BG,
+                        foreground=FG, font=FONT_ENTRY, rowheight=28)
+        style.configure("Ingr.Treeview.Heading",
+                        background=BROWN, foreground=YELLOW,
+                        font=FONT_LABEL, relief="flat")
+        style.map("Ingr.Treeview",
+                  background=[("selected", ACCENT)],
+                  foreground=[("selected", BROWN)])
+
+        tree_frame = tk.Frame(parent, bg=BROWN, padx=1, pady=1)
+        tree_frame.pack(fill="both", expand=True)
+
+        self.tree = ttk.Treeview(tree_frame, style="Ingr.Treeview",
+                                 selectmode="browse")
+        vsb = ttk.Scrollbar(tree_frame, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscrollcommand=vsb.set)
+        self.tree.pack(side="left", fill="both", expand=True)
+        vsb.pack(side="right", fill="y")
+
+    def _build_controls(self, parent):
+        tk.Label(parent, text="Actions", font=FONT_TITLE,
+                 bg=BG, fg=BROWN).pack(anchor="w", pady=(0, 4))
+        tk.Frame(parent, bg=YELLOW, height=3).pack(fill="x", pady=(0, 12))
+
+        styled_button(parent, "＋  Add Ingredient",
+                      self.OpenAddProductWindow).pack(fill="x", pady=4)
+        styled_button(parent, "✎  Edit Ingredient",
+                      self.OpenEditProductWindow).pack(fill="x", pady=4)
+
+        tk.Frame(parent, bg=YELLOW, height=2).pack(fill="x", pady=10)
+
+        tk.Label(parent, text="Archive by ID or Name",
+                 font=FONT_SMALL, bg=BG, fg=SUBTLE).pack(anchor="w")
+
+        arc_border = tk.Frame(parent, bg=ENTRY_BORDER, padx=1, pady=1)
+        arc_border.pack(fill="x", pady=(2, 6))
+        self.archive_entry = tk.Entry(arc_border, font=FONT_ENTRY,
+                                      bg=ENTRY_BG, fg=FG, relief="flat", bd=0)
+        self.archive_entry.pack(fill="x", ipady=6, padx=4)
+        self.archive_entry.bind("<FocusIn>",  lambda e: arc_border.config(bg=ACCENT))
+        self.archive_entry.bind("<FocusOut>", lambda e: arc_border.config(bg=ENTRY_BORDER))
+
+        styled_button(parent, "📦  Archive Ingredient",
+                      self.archive_products,
+                      bg="#a0522d", fg=YELLOW).pack(fill="x", pady=4)
+
+        styled_button(parent, "🗂  View Archive",
+                      self.OpenArchiveFeature,
+                      bg=SUBTLE, fg=YELLOW).pack(fill="x", pady=4)
+
+    # ── Data ────────────────────────────────────────────────────
+
+    def load_products(self, *_):
         conn = connect_db()
         cursor = conn.cursor()
-
         cursor.execute("SELECT * FROM ingredients")
         rows = cursor.fetchall()
+        col_names = [desc[0] for desc in cursor.description]
+        conn.close()
 
         self.tree.delete(*self.tree.get_children())
-
-        column_names = [desc[0] for desc in cursor.description]
-
-        self.tree["columns"] = column_names
+        self.tree["columns"] = col_names
         self.tree["show"] = "headings"
 
-        for col in column_names:
-            self.tree.heading(col, text=col)
-            self.tree.column(col, width=120)
+        for col in col_names:
+            self.tree.heading(col, text=col.capitalize())
+            self.tree.column(col, width=120, anchor="center")
 
         low_items = []
-
         for row in rows:
             stock = row[2]
-
-            if stock <= self.low_grams and row[3] == "grams":
-                self.tree.insert("", tk.END, values=row, tags=("low",))
-                low_items.append(row[1])
-            elif stock <= self.low_pcs and row[3] == "pcs":
-                self.tree.insert("", tk.END, values=row, tags=("low",))
-                low_items.append(row[1])
-            elif stock <= self.low_tsp and row[3] == "tsp":
-                self.tree.insert("", tk.END, values=row, tags=("low",))
-                low_items.append(row[1])
-            elif stock <= self.low_slices and row[3] == "slices":
-                self.tree.insert("", tk.END, values=row, tags=("low",))
-                low_items.append(row[1])
-            elif stock <= self.low_ml and row[3] == "ml":
+            unit  = row[3] if len(row) > 3 else ""
+            limit = self.low_limits.get(unit, None)
+            if limit is not None and stock <= limit:
                 self.tree.insert("", tk.END, values=row, tags=("low",))
                 low_items.append(row[1])
             else:
                 self.tree.insert("", tk.END, values=row)
 
-        self.tree.tag_configure("low", background="red", foreground="white")
+        self.tree.tag_configure("low", background="#ffe0e0", foreground="#c0392b")
 
         if low_items:
-            messagebox.showwarning(
-                "Low Stock Alert",
-                f"Low stock: {', '.join(low_items)}"
-            )
-
-        conn.close()
-
-    def refresh_products(self):
-        self.load_products()
+            messagebox.showwarning("Low Stock Alert",
+                                   "Low stock items:\n• " + "\n• ".join(low_items))
 
     def search_product(self):
-        keyword = self.search_bar2.get()
-
+        keyword = self.search_var.get()
         conn = connect_db()
         cursor = conn.cursor()
-
-        cursor.execute("""
-        SELECT * FROM ingredients
-        WHERE id LIKE ? OR name LIKE ?
-        """, ('%' + keyword + '%', '%' + keyword + '%'))
-
+        cursor.execute(
+            "SELECT * FROM ingredients WHERE id LIKE ? OR name LIKE ?",
+            (f"%{keyword}%", f"%{keyword}%")
+        )
         rows = cursor.fetchall()
-
+        conn.close()
         self.tree.delete(*self.tree.get_children())
-
         for row in rows:
             self.tree.insert("", tk.END, values=row)
 
-        conn.close()
-
-    def delete_product(self):
-        keyword = self.entry.get()
-
-        if keyword == "":
-            messagebox.showerror("Error", "Enter ID or Name")
-            return
-
-        conn = connect_db()
-        cursor = conn.cursor()
-
-        cursor.execute("SELECT * FROM ingredients WHERE id=? OR name=?", (keyword, keyword))
-        result = cursor.fetchone()
-
-        if not result:
-            messagebox.showerror("Error", "Not found")
-            conn.close()
-            return
-
-        confirm = messagebox.askyesno("Confirm", "Delete this ingredient?")
-        if not confirm:
-            conn.close()
-            return
-
-        cursor.execute("DELETE FROM ingredients WHERE id=? OR name=?", (keyword, keyword))
-
-        conn.commit()
-        conn.close()
-
-        self.entry.delete(0, tk.END)
-        messagebox.showinfo("Success", "Deleted")
-        self.refresh_products()
-
     def archive_products(self):
-        keyword = self.archive_entry.get()
-
-        if keyword == "":
-            messagebox.showwarning("Error", "Enter ID or Name")
+        keyword = self.archive_entry.get().strip()
+        if not keyword:
+            messagebox.showwarning("Archive", "Enter an ingredient ID or name.")
             return
 
         conn = connect_db()
         cursor = conn.cursor()
-
         cursor.execute("SELECT * FROM ingredients WHERE id=? OR name=?", (keyword, keyword))
         result = cursor.fetchone()
 
         if not result:
-            messagebox.showerror("Error", "Not found")
+            messagebox.showerror("Not Found", "Ingredient not found.")
             conn.close()
             return
 
-        confirm = messagebox.askyesno("Confirm", "Archive this product?")
-        if not confirm:
+        if not messagebox.askyesno("Confirm Archive", f"Archive '{result[1]}'?"):
             conn.close()
             return
 
         cursor.execute("""
-        INSERT INTO ingredients_archive (name, stock, unit)
-        SELECT name, stock, unit FROM ingredients WHERE id=? OR name=?
+            INSERT INTO ingredients_archive (name, stock, unit)
+            SELECT name, stock, unit FROM ingredients WHERE id=? OR name=?
         """, (keyword, keyword))
-
         cursor.execute("DELETE FROM ingredients WHERE id=? OR name=?", (keyword, keyword))
-
         conn.commit()
         conn.close()
 
         self.archive_entry.delete(0, tk.END)
-        messagebox.showinfo("Success", "Archived")
-        self.refresh_products()
+        messagebox.showinfo("Archived", "Ingredient archived successfully.")
+        self.load_products()
+
+    # ── Navigation ──────────────────────────────────────────────
 
     def OpenAddProductWindow(self):
-        new_window = tk.Toplevel(self.root)
-        AddProductWindow2(new_window, self)
+        AddIngredientWindow(tk.Toplevel(self.root), self)
 
     def OpenEditProductWindow(self):
-        new_window = tk.Toplevel(self.root)
-        EditProductWindow2(new_window, self)
-
-    def OpenLoginPage(self):
-        self.root.destroy()
-        new_window = tk.Tk()
-        MainApp(new_window)
+        EditIngredientWindow(tk.Toplevel(self.root), self)
 
     def OpenArchiveFeature(self):
-            new_window = tk.Toplevel(self.root)
-            ArchiveFeature2(new_window)
+        if ARCHIVE2_AVAILABLE:
+            ArchiveFeature2(tk.Toplevel(self.root))
+        else:
+            messagebox.showwarning("Unavailable", "Archive2 module not found.")
 
 
-# Add Product Window
-class AddProductWindow2:
+# ── Add Ingredient Window ───────────────────────────────────────
+
+class AddIngredientWindow:
     def __init__(self, root, main_app):
         self.root = root
         self.main_app = main_app
-        self.root.title("Add Ingredient Window")
-        self.root.geometry("500x400")
+        self.root.title("Add Ingredient")
+        self.root.resizable(False, False)
+        self.root.configure(bg=BG)
+        self.root.grab_set()
+        self.root.after(100, self.root.focus_force)
+        self.root.bind_all("<Button-1>", lambda e: e.widget.focus_set() if isinstance(e.widget, tk.Entry) else None)
 
-        # Title
-        tk.Label(root, text="Add New Ingredient",
-                 font=("Arial", 16, "bold")).pack(pady=10)
+        w, h = 380, 400
+        x = (root.winfo_screenwidth() // 2) - (w // 2)
+        y = (root.winfo_screenheight() // 2) - (h // 2)
+        self.root.geometry(f"{w}x{h}+{x}+{y}")
 
-        # Name Label and Entry
-        tk.Label(root, text="Ingredient Name:").pack(pady=5)
-        self.name_entry = tk.Entry(root, width=30)
-        self.name_entry.pack(pady=5)
+        banner = tk.Frame(root, bg=BROWN, height=38)
+        banner.pack(fill="x")
+        banner.pack_propagate(False)
+        tk.Label(banner, text="Add New Ingredient", font=FONT_TITLE,
+                 bg=BROWN, fg=YELLOW).pack(side="left", padx=14, pady=6)
 
-        # Stock Label and Entry
-        tk.Label(root, text="Stock:").pack(pady=5)
-        self.stock_entry = tk.Entry(root, width=30)
-        self.stock_entry.pack(pady=5)
+        tk.Frame(root, bg=ACCENT, height=3).pack(fill="x")
+        tk.Frame(root, bg=YELLOW, height=3).pack(fill="x")
 
-        # Unit Label and Entry
-        tk.Label(root, text="Unit:").pack(pady=5)
-        self.unit_entry = tk.Entry(root, width=30)
-        self.unit_entry.pack(pady=5)
+        form = tk.Frame(root, bg=BG, padx=30, pady=20)
+        form.pack(fill="both", expand=True)
 
-        # Add Button
-        tk.Button(root, text="Add Ingredient", command=self.add_product).pack(pady=20)
+        self.e_name  = entry_field(form, "Ingredient Name")
+        self.e_stock = entry_field(form, "Stock")
+        self.e_unit  = entry_field(form, "Unit  (grams / pcs / tsp / slices / ml)")
 
-    def get_next_id(self):
-        conn = connect_db()
-        cursor = conn.cursor()
+        styled_button(form, "＋  Add Ingredient", self._add, width=22).pack(pady=(18, 0), fill="x")
 
-        cursor.execute("SELECT id FROM products ORDER BY id ASC")
-        ids = cursor.fetchall()
+    def _add(self):
+        name  = self.e_name.get().strip()
+        stock = self.e_stock.get().strip()
+        unit  = self.e_unit.get().strip()
 
-        conn.close()
-
-        expected_id = 1
-
-        for row in ids:
-            current_id = int(row[0])
-            if current_id != expected_id:
-                return expected_id
-            expected_id += 1
-
-        return expected_id
-
-    def add_product(self):
-        product_id = self.get_next_id()
-        name = self.name_entry.get()
-        stock = self.stock_entry.get()
-        unit = self.unit_entry.get()
-
-        if product_id == "" or name == "" or stock == "" or unit == "":
-            messagebox.showerror("Error", "Please fill in all fields")
+        if not all([name, stock, unit]):
+            messagebox.showerror("Error", "Please fill in all fields.")
             return
 
         conn = connect_db()
         cursor = conn.cursor()
-
-        cursor.execute("SELECT * FROM ingredients WHERE name=?", (name,))
-        existing = cursor.fetchone()
-
-        if existing:
-            messagebox.showerror("Error", f"Ingredient {name} already exists")
+        cursor.execute("SELECT id FROM ingredients WHERE name=?", (name,))
+        if cursor.fetchone():
+            messagebox.showerror("Error", f"'{name}' already exists.")
             conn.close()
             return
-        
+
         cursor.execute("INSERT INTO ingredients (name, stock, unit) VALUES (?, ?, ?)",
                        (name, stock, unit))
         conn.commit()
         conn.close()
 
-        messagebox.showinfo("Success", "Ingredient added successfully")
-        self.main_app.refresh_products()
+        messagebox.showinfo("Success", "Ingredient added successfully.")
+        self.main_app.load_products()
         self.root.destroy()
 
 
-# Edit Product Window
-class EditProductWindow2:
+# ── Edit Ingredient Window ──────────────────────────────────────
+
+class EditIngredientWindow:
     def __init__(self, root, main_app):
         self.root = root
         self.main_app = main_app
-        self.root.title("Edit Ingredient Window")
-        self.root.geometry("500x400")
+        self.root.title("Edit Ingredient")
+        self.root.resizable(False, False)
+        self.root.configure(bg=BG)
+        self.root.grab_set()
+        self.root.after(100, self.root.focus_force)
+        self.root.bind_all("<Button-1>", lambda e: e.widget.focus_set() if isinstance(e.widget, tk.Entry) else None)
 
-        # Title
-        tk.Label(root, text="Edit Ingredient",
-                 font=("Arial", 16, "bold")).pack(pady=10)
+        w, h = 380, 440
+        x = (root.winfo_screenwidth() // 2) - (w // 2)
+        y = (root.winfo_screenheight() // 2) - (h // 2)
+        self.root.geometry(f"{w}x{h}+{x}+{y}")
 
-        # ID Label and Entry
-        tk.Label(root, text="Ingredient ID:").pack(pady=5)
-        self.id_entry = tk.Entry(root, width=30)
-        self.id_entry.pack(pady=5)
+        banner = tk.Frame(root, bg=BROWN, height=38)
+        banner.pack(fill="x")
+        banner.pack_propagate(False)
+        tk.Label(banner, text="Edit Ingredient", font=FONT_TITLE,
+                 bg=BROWN, fg=YELLOW).pack(side="left", padx=14, pady=6)
 
-        # Name Label and Entry
-        tk.Label(root, text="New Name:").pack(pady=5)
-        self.name_entry = tk.Entry(root, width=30)
-        self.name_entry.pack(pady=5)
+        tk.Frame(root, bg=ACCENT, height=3).pack(fill="x")
+        tk.Frame(root, bg=YELLOW, height=3).pack(fill="x")
 
-        # Stock Label and Entry
-        tk.Label(root, text="New Stock:").pack(pady=5)
-        self.stock_entry = tk.Entry(root, width=30)
-        self.stock_entry.pack(pady=5)
+        form = tk.Frame(root, bg=BG, padx=30, pady=20)
+        form.pack(fill="both", expand=True)
 
-        # Unit Label and Entry
-        tk.Label(root, text="New Unit:").pack(pady=5)
-        self.unit_entry = tk.Entry(root, width=30)
-        self.unit_entry.pack(pady=5)
+        self.e_id    = entry_field(form, "Ingredient ID  (required)")
+        self.e_name  = entry_field(form, "New Name  (leave blank to keep)")
+        self.e_stock = entry_field(form, "New Stock  (leave blank to keep)")
+        self.e_unit  = entry_field(form, "New Unit  (leave blank to keep)")
 
-        # Update Button
-        tk.Button(root, text="Update Ingredient", command=self.update_product).pack(pady=20)
+        styled_button(form, "✎  Update Ingredient", self._update, width=22).pack(pady=(18, 0), fill="x")
 
-    def update_product(self):
-        id_val = self.id_entry.get()
-        name = self.name_entry.get()
-        stock = self.stock_entry.get()
-        unit = self.unit_entry.get()
+    def _update(self):
+        id_val = self.e_id.get().strip()
+        name   = self.e_name.get().strip()
+        stock  = self.e_stock.get().strip()
+        unit   = self.e_unit.get().strip()
 
         if not id_val:
-            messagebox.showerror("Error", "Please enter an Ingredient ID")
+            messagebox.showerror("Error", "Ingredient ID is required.")
             return
 
         conn = connect_db()
         cursor = conn.cursor()
-
-        # Fetch existing values
         cursor.execute("SELECT name, stock, unit FROM ingredients WHERE id=?", (id_val,))
         result = cursor.fetchone()
+
         if not result:
-            messagebox.showerror("Error", "Ingredient ID not found")
+            messagebox.showerror("Not Found", f"No ingredient with ID {id_val}.")
             conn.close()
             return
 
-        current_name, current_stock, current_unit = result
+        cur_name, cur_stock, cur_unit = result
+        name = name or cur_name
+        unit = unit or cur_unit
 
-        # Only update fields if the user provided input
-        name = name if name.strip() else current_name
-        unit = unit if unit.strip() else current_unit
-
-        # Handle stock separately to ensure it's a number
-        if stock.strip():
+        if stock:
             try:
                 stock = float(stock)
             except ValueError:
-                messagebox.showerror("Error", "Stock must be a number")
+                messagebox.showerror("Error", "Stock must be a number.")
                 conn.close()
                 return
         else:
-            stock = current_stock
+            stock = cur_stock
 
         cursor.execute(
             "UPDATE ingredients SET name=?, stock=?, unit=? WHERE id=?",
@@ -405,16 +417,12 @@ class EditProductWindow2:
         conn.commit()
         conn.close()
 
-        messagebox.showinfo("Success", "Ingredient updated successfully")
-        self.main_app.refresh_products()
+        messagebox.showinfo("Success", "Ingredient updated successfully.")
+        self.main_app.load_products()
         self.root.destroy()
 
 
 if __name__ == "__main__":
     root = tk.Tk()
-    app = IngredientsTableWindow(root)
+    IngredientsTableWindow(root)
     root.mainloop()
-
-"""
-Update:
-- Removed Delete function"""
