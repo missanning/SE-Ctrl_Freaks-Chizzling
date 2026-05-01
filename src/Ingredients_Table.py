@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
+from LoginPage import MainApp
 from database_setup import connect_db
 from tkinter import messagebox
 
@@ -63,28 +64,14 @@ class IngredientsTableWindow:
         tk.Button(right_frame, text="Refresh Ingredients", width=22,
                   command=self.refresh_products).pack(pady=5)
 
-        # DELETE SECTION
-        tk.Label(right_frame, text="Delete Ingredient").pack(pady=10)
-
-        delete_frame = tk.Frame(right_frame)
-        delete_frame.pack(pady=5)
-
-        self.entry = tk.Entry(delete_frame, width=15)
-        self.entry.pack(side=tk.LEFT, padx=5)
-
-        tk.Button(delete_frame, text="Delete",
-                  command=self.delete_product).pack(side=tk.LEFT)
-
-        # ADD / EDIT
         tk.Button(right_frame, text="Add Ingredient", width=22,
                   command=self.OpenAddProductWindow).pack(pady=5)
 
         tk.Button(right_frame, text="Edit Ingredient", width=22,
                   command=self.OpenEditProductWindow).pack(pady=5)
-
-    # =======================
-    # FUNCTIONS (UNCHANGED)
-    # =======================
+        
+        tk.Button(right_frame, text="Logout", width=22,
+                  command=self.OpenLoginPage).pack(pady=20)
 
     def load_products(self):
         conn = connect_db()
@@ -200,6 +187,11 @@ class IngredientsTableWindow:
         new_window = tk.Toplevel(self.root)
         EditProductWindow2(new_window, self)
 
+    def OpenLoginPage(self):
+        self.root.destroy()
+        new_window = tk.Tk()
+        MainApp(new_window)
+
 
 
 # Add Product Window
@@ -231,6 +223,7 @@ class AddProductWindow2:
 
         # Add Button
         tk.Button(root, text="Add Ingredient", command=self.add_product).pack(pady=20)
+
     def get_next_id(self):
         conn = connect_db()
         cursor = conn.cursor()
@@ -370,3 +363,7 @@ if __name__ == "__main__":
     root = tk.Tk()
     app = IngredientsTableWindow(root)
     root.mainloop()
+
+"""
+Update:
+- Removed Delete function"""
