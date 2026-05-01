@@ -1,109 +1,96 @@
 import tkinter as tk
-import os
+import platform
 
-def get_asset_path(filename):
-    """Get the full path to an asset file"""
-    project_root = os.path.dirname(os.path.dirname(__file__))
-    return os.path.join(project_root, "assets", filename)
+WHITE      = "#FFFFFF"
+PRIMARY    = "#F5A623"
+PRIMARY_LT = "#FFF0D0"
+TEXT_DARK  = "#3B1F0A"
+BORDER     = "#FFD966"
+
+_SYS     = platform.system()
+FONT_FAM = "Helvetica" if _SYS == "Darwin" else ("Segoe UI" if _SYS == "Windows" else "Sans Serif")
+FONT_BOLD = (FONT_FAM, 12, "bold")
+
+ICONS = {
+    "all": "     🍽️", "meals": "🍱", "snacks": "🍿",
+    "drinks": "🥤", "alcohol": "🍺",
+    "pizza": "🍕", "burger": "🍔", "salad": "🥗",
+    "dessert": "🍨", "combo": "🍱",
+}
+
 
 class CategoryNavigation:
     def __init__(self, parent, pos_instance):
-        self.parent = parent
-        self.pos = pos_instance
-        self.category_labels = {}
-        self.current_category = "meals"
-        self.load_category_images()
-        self.create_category_frame()
-    
-    def load_category_images(self):
-        """Load all category images"""
-        self.meals_img_inactive = tk.PhotoImage(file=get_asset_path("MEALS1.png"))
-        self.snacks_img_inactive = tk.PhotoImage(file=get_asset_path("SNACKS1.png"))
-        self.drinks_img_inactive = tk.PhotoImage(file=get_asset_path("DRINKS1.png"))
-        self.alcohol_img_inactive = tk.PhotoImage(file=get_asset_path("ALCOHOL1.png"))
-        self.all_img_inactive = tk.PhotoImage(file=get_asset_path("ALL1.png"))
+        self.parent     = parent
+        self.pos        = pos_instance
+        self.active_cat = "All"
+        self._chips     = {}   # cat -> {"chip", "icon", "text"}
+        self._create_sidebar()
 
-        self.meals_img_active = tk.PhotoImage(file=get_asset_path("MEALS.png"))
-        self.snacks_img_active = tk.PhotoImage(file=get_asset_path("SNACKS.png"))
-        self.drinks_img_active = tk.PhotoImage(file=get_asset_path("DRINKS.png"))
-        self.alcohol_img_active = tk.PhotoImage(file=get_asset_path("ALCOHOL.png"))
-        self.all_img_active = tk.PhotoImage(file=get_asset_path("ALL.png"))
-    
-    def create_category_frame(self):
-        """Create the category navigation frame"""
-        category_frame = tk.Frame(self.parent, bg="#FAF3E1")
-        category_frame.grid(row=7, column=0, padx=10, pady=10, sticky="ew")
+    def _create_sidebar(self):
+        sidebar = tk.Frame(self.parent, bg=WHITE)
+        sidebar.pack(fill="both", expand=True)
 
-        # Meals
-        meals_label = tk.Label(category_frame, image=self.meals_img_active, cursor="hand2", bg="#FAF3E1")
-        meals_label.grid(row=0, column=0, padx=5)
-        meals_label.bind("<Button-1>", lambda e: self.set_active_category("meals"))
-        self.category_labels["meals"] = meals_label
+        tk.Label(sidebar, text="Category", font=FONT_BOLD,
+                 fg=TEXT_DARK, bg=WHITE).pack(pady=(14, 8))
+        tk.Frame(sidebar, bg=BORDER, height=1).pack(fill="x", padx=8)
 
-        # Snacks
-        snacks_label = tk.Label(category_frame, image=self.snacks_img_inactive, cursor="hand2", bg="#FAF3E1")
-        snacks_label.grid(row=0, column=1, padx=5)
-        snacks_label.bind("<Button-1>", lambda e: self.set_active_category("snacks"))
-        self.category_labels["snacks"] = snacks_label
+        self.cat_frame = tk.Frame(sidebar, bg=WHITE)
+        self.cat_frame.pack(fill="both", expand=True, pady=4)
 
-        # Drinks
-        drinks_label = tk.Label(category_frame, image=self.drinks_img_inactive, cursor="hand2", bg="#FAF3E1")
-        drinks_label.grid(row=0, column=2, padx=5)
-        drinks_label.bind("<Button-1>", lambda e: self.set_active_category("drinks"))
-        self.category_labels["drinks"] = drinks_label
+    def load_categories(self, cats):
+        for w in self.cat_frame.winfo_children():
+            w.destroy()
+        self._chips = {}
+        for cat in cats:
+            self._make_chip(cat)
 
-        # Alcohol
-        alcohol_label = tk.Label(category_frame, image=self.alcohol_img_inactive, cursor="hand2", bg="#FAF3E1")
-        alcohol_label.grid(row=0, column=3, padx=5)
-        alcohol_label.bind("<Button-1>", lambda e: self.set_active_category("alcohol"))
-        self.category_labels["alcohol"] = alcohol_label
+    def _make_chip(self, cat):
+        is_active = (cat.lower() == self.active_cat.lower())
+        chip_bg   = PRIMARY if is_active else WHITE
+        fg        = WHITE   if is_active else TEXT_DARK
+        icon      = ICONS.get(cat.lower(), "🍴")
 
-        # All
-        all_label = tk.Label(category_frame, image=self.all_img_inactive, cursor="hand2", bg="#FAF3E1")
-        all_label.grid(row=0, column=4, padx=5)
-        all_label.bind("<Button-1>", lambda e: self.set_active_category("all"))
-        self.category_labels["all"] = all_label
+        chip = tk.Frame(self.cat_frame, bg=chip_bg, cursor="hand2")
+        chip.pack(fill="x", padx=8, pady=2)
 
-        # Cancel Order button
-        cancel_btn = tk.Button(
-            category_frame,
-            text="CANCEL ORDER",
-            command=self.pos.cancel_order,
-            bg="#DC3545",
-            fg="white",
-            activebackground="#C82333",
-            activeforeground="white",
-            relief="raised",
-            cursor="hand2",
-            font=("Arial", 12, "bold"),
-            width=18,
-            height=2,
-            bd=3
-        )
-        cancel_btn.grid(row=0, column=5, padx=10, pady=5)
+        icon_lbl = tk.Label(chip, text=icon, font=(FONT_FAM, 22),
+                            bg=chip_bg, anchor="center")
+        icon_lbl.pack(fill="x", pady=(8, 2))
 
-        # Set default category without triggering load (load is deferred in ChizzlingPOS)
-        self.current_category = "all"
-        for cat, label in self.category_labels.items():
-            if cat == "all":
-                label.config(image=self.all_img_active)
-            else:
-                label.config(image=getattr(self, f"{cat}_img_inactive"))
-    
+        text_lbl = tk.Label(chip, text=cat,
+                            font=(FONT_FAM, 11, "bold" if is_active else "normal"),
+                            fg=fg, bg=chip_bg, anchor="center")
+        text_lbl.pack(fill="x", pady=(0, 8))
+
+        self._chips[cat] = {"chip": chip, "icon": icon_lbl, "text": text_lbl}
+
+        for w in (chip, icon_lbl, text_lbl):
+            w.bind("<Button-1>", lambda _, c=cat: self.set_active_category(c))
+            w.bind("<Enter>",    lambda _, c=cat: self._on_hover(c, True))
+            w.bind("<Leave>",    lambda _, c=cat: self._on_hover(c, False))
+
+    def _on_hover(self, cat, entering):
+        if cat.lower() == self.active_cat.lower():
+            return
+        w = self._chips[cat]
+        bg = PRIMARY_LT if entering else WHITE
+        w["chip"].config(bg=bg)
+        w["icon"].config(bg=bg)
+        w["text"].config(bg=bg)
+
     def set_active_category(self, category):
-        """Set the active category and update display"""
-        category = category.lower()
-        self.current_category = category
-        
-        # Update category button images
-        for cat, label in self.category_labels.items():
-            if cat == category:
-                label.config(image=getattr(self, f"{cat}_img_active"))
-            else:
-                label.config(image=getattr(self, f"{cat}_img_inactive"))
+        self.active_cat = category
+        for cat, w in self._chips.items():
+            is_active = (cat.lower() == category.lower())
+            chip_bg   = PRIMARY if is_active else WHITE
+            fg        = WHITE   if is_active else TEXT_DARK
+            w["chip"].config(bg=chip_bg)
+            w["icon"].config(bg=chip_bg)
+            w["text"].config(bg=chip_bg, fg=fg,
+                             font=(FONT_FAM, 11, "bold" if is_active else "normal"))
 
-        # Load products for category
-        if category == "all":
+        if category.lower() == "all":
             self.pos.load_products(None)
         else:
             self.pos.load_products(category)
