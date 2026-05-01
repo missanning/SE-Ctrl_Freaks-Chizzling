@@ -1,6 +1,16 @@
 from tkinter import messagebox
+import sqlite3
+import os
 
 def auto_deduct_stock(cursor, product_id, quantity_sold):
+    # FIX: get product name first (IMPORTANT)
+    cursor.execute("SELECT name FROM products WHERE id = ?", (product_id,))
+    result = cursor.fetchone()
+
+    if not result:
+        messagebox.showerror("Product Error", "Product not found.")
+        return False
+
     cursor.execute("SELECT stock FROM products WHERE id = ?", (product_id,))
     result = cursor.fetchone()
 
@@ -17,6 +27,7 @@ def auto_deduct_stock(cursor, product_id, quantity_sold):
             (new_stock, product_id)
         )
         return True
+
     else:
         messagebox.showerror("Product Error", "Product not found.")
         return False
