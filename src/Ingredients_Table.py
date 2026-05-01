@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
+from Archive2 import ArchiveFeature2
 from LoginPage import MainApp
 from database_setup import connect_db
 from tkinter import messagebox
@@ -69,6 +70,16 @@ class IngredientsTableWindow:
 
         tk.Button(right_frame, text="Edit Ingredient", width=22,
                   command=self.OpenEditProductWindow).pack(pady=5)
+        
+        # ARCHIVE
+        self.archive_entry = tk.Entry(right_frame, width=24)
+        self.archive_entry.pack(pady=10)
+
+        tk.Button(right_frame, text="Archive Product", width=22,
+                  command=self.archive_products).pack(pady=5)
+
+        tk.Button(right_frame, text="Go to Archive", width=22,
+                  command=self.OpenArchiveFeature).pack(pady=5)
         
         tk.Button(right_frame, text="Logout", width=22,
                   command=self.OpenLoginPage).pack(pady=20)
@@ -179,6 +190,43 @@ class IngredientsTableWindow:
         messagebox.showinfo("Success", "Deleted")
         self.refresh_products()
 
+    def archive_products(self):
+        keyword = self.archive_entry.get()
+
+        if keyword == "":
+            messagebox.showwarning("Error", "Enter ID or Name")
+            return
+
+        conn = connect_db()
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT * FROM ingredients WHERE id=? OR name=?", (keyword, keyword))
+        result = cursor.fetchone()
+
+        if not result:
+            messagebox.showerror("Error", "Not found")
+            conn.close()
+            return
+
+        confirm = messagebox.askyesno("Confirm", "Archive this product?")
+        if not confirm:
+            conn.close()
+            return
+
+        cursor.execute("""
+        INSERT INTO ingredients_archive (name, stock, unit)
+        SELECT name, stock, unit FROM ingredients WHERE id=? OR name=?
+        """, (keyword, keyword))
+
+        cursor.execute("DELETE FROM ingredients WHERE id=? OR name=?", (keyword, keyword))
+
+        conn.commit()
+        conn.close()
+
+        self.archive_entry.delete(0, tk.END)
+        messagebox.showinfo("Success", "Archived")
+        self.refresh_products()
+
     def OpenAddProductWindow(self):
         new_window = tk.Toplevel(self.root)
         AddProductWindow2(new_window, self)
@@ -192,6 +240,9 @@ class IngredientsTableWindow:
         new_window = tk.Tk()
         MainApp(new_window)
 
+    def OpenArchiveFeature(self):
+            new_window = tk.Toplevel(self.root)
+            ArchiveFeature2(new_window)
 
 
 # Add Product Window
