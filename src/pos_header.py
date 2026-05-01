@@ -1,84 +1,79 @@
 import tkinter as tk
 import os
-import subprocess
 try:
     from PIL import Image, ImageTk
+    PIL_AVAILABLE = True
 except ImportError:
-    Image = None
-    ImageTk = None
+    PIL_AVAILABLE = False
 
-def get_asset_path(filename):
-    """Get the full path to an asset file"""
-    project_root = os.path.dirname(os.path.dirname(__file__))
-    return os.path.join(project_root, "assets", filename)
+BG      = "#FFF8EE"
+WHITE   = "#FFFFFF"
+HEADER  = "#E8820C"
+BORDER  = "#FFD966"
+FONT_FAM = "Segoe UI"
+FONT_BOLD = (FONT_FAM, 12, "bold")
+FONT_SMALL = (FONT_FAM, 10)
+
 
 class POSHeader:
-    def __init__(self, parent):
-        self.parent = parent
+    def __init__(self, parent, username="cashier", role="cashier", logout_cmd=None):
+        self.parent     = parent
+        self.username   = username
+        self.role       = role
+        self.logout_cmd = logout_cmd
+        self._logo_img  = None
         self.create_header()
-    
-    def _do_resize(self, label, w, h):
-        resized = self.header_pil.resize((w, h), Image.LANCZOS)
-        self.header_img = ImageTk.PhotoImage(resized)
-        label.config(image=self.header_img)
-        label.image = self.header_img
 
-    def logout_and_redirect(self):
-        """Logout and redirect to login page"""
-        try:
-            # Close current window
-            self.parent.destroy()
-            # Launch login page
-            subprocess.Popen(["python", "LoginPage.py"], 
-                           cwd=os.path.dirname(__file__))
-        except Exception as e:
-            print(f"Error during logout: {e}")
-    
     def create_header(self):
-        # Shadow frame
-        shadow = tk.Frame(self.parent, bg="#423e3e")
-        shadow.grid(row=0, column=0, columnspan=3, sticky="ew", padx=3, pady=(3,0))
+        bar = tk.Frame(self.parent, bg=HEADER, height=120)
+        bar.pack(fill="x", side="top")
+        bar.pack_propagate(False)
 
-        # Actual header frame
-        header = tk.Frame(self.parent)
-        header.grid(row=0, column=0, columnspan=3, sticky="nsew")
-        header.grid_propagate(False)
+        # Logo
+        logo_path = os.path.join(os.path.dirname(__file__), "..", "assets", "LOGO.png")
+        logo_frame = tk.Frame(bar, bg=HEADER)
+        logo_frame.pack(side="left", padx=(12, 4), pady=5)
+        if PIL_AVAILABLE and os.path.exists(logo_path):
+            img = Image.open(logo_path).resize((120, 120), Image.LANCZOS)
+            self._logo_img = ImageTk.PhotoImage(img)
+            tk.Label(logo_frame, image=self._logo_img, bg=HEADER).pack(side="left")
+        tk.Label(logo_frame, text="Chizzling", font=(FONT_FAM, 18, "bold"),
+                 fg=WHITE, bg=HEADER).pack(side="left", padx=(8, 0))
+        tk.Label(logo_frame, text="POS.", font=(FONT_FAM, 18, "bold"),
+                 fg=WHITE, bg=HEADER).pack(side="left")
 
-        # Load header image
-        if Image is not None and ImageTk is not None:
-            self.header_pil = Image.open(get_asset_path("HEADER.png"))
-            self.header_img = ImageTk.PhotoImage(self.header_pil)
-
-            header_label = tk.Label(header, image=self.header_img, borderwidth=0, relief="flat")
-            header_label.pack(fill="x", expand=True)
-
-            def _resize_header(event):
-                if event.width <= 1 or event.height <= 1:
-                    return
-                if hasattr(self, '_last_resize_width') and self._last_resize_width == event.width:
-                    return
-                self._last_resize_width = event.width
-                self.parent.after_cancel(self._resize_job) if hasattr(self, '_resize_job') else None
-                self._resize_job = self.parent.after(150, lambda w=event.width, h=event.height: self._do_resize(header_label, w, h))
-
-            header.bind("<Configure>", _resize_header)
-        else:
-            # Fall back to Tkinter PhotoImage
-            self.header_img = tk.PhotoImage(file=get_asset_path("HEADER.png"))
-            header_label = tk.Label(header, image=self.header_img, borderwidth=0, relief="solid")
-            header_label.pack(fill="both", expand=True)
-            
         # Logout button
-        logout_btn = tk.Button(
-            header_label,
-            text="⎋ LOGOUT",
-            command=self.logout_and_redirect,
-            bg="#FF6600",
-            fg="white",
-            activebackground="#FF8844",
-            activeforeground="white",
-            relief="flat",
-            cursor="hand2",
-            width=10
-        )
-        logout_btn.place(relx=0.95, rely=0.5, anchor="e")
+        logout_btn = tk.Label(bar, text="⏻  Logout", font=FONT_BOLD,
+                              fg=WHITE, bg=HEADER, cursor="hand2", padx=14, pady=6)
+        logout_btn.pack(side="right", padx=12, pady=14)
+        logout_btn.bind("<Enter>", lambda e: logout_btn.config(bg="#C0620A"))
+        logout_btn.bind("<Leave>", lambda e: logout_btn.config(bg=HEADER))
+        logout_btn.bind("<Button-1>", lambda e: self._do_logout())
+
+        # User pill
+        pill = tk.Frame(bar, bg=HEADER, bd=0)
+        pill.pack(side="right", padx=(0, 4), pady=10)
+        initials = self.username[:2].upper()
+        tk.Label(pill, text=initials, bg=WHITE, fg=HEADER,
+                 font=FONT_BOLD, width=3, height=1).pack(side="left", padx=(6, 8), pady=4)
+        info = tk.Frame(pill, bg=HEADER)
+        info.pack(side="left", padx=(0, 6))
+        tk.Label(info, text=self.username, font=FONT_BOLD,
+                 fg=WHITE, bg=HEADER).pack(anchor="w")
+        tk.Label(info, text=self.role.replace("_", " ").title(), font=FONT_SMALL,
+                 fg=WHITE, bg=HEADER).pack(anchor="w")
+
+        # Separator
+        tk.Frame(self.parent, bg=BORDER, height=2).pack(fill="x")
+
+    def _do_logout(self):
+        if self.logout_cmd:
+            self.logout_cmd()
+        else:
+            import sys
+            sys.path.insert(0, os.path.dirname(__file__))
+            self.parent.destroy()
+            from LoginPage import MainApp
+            new_root = tk.Tk()
+            MainApp(new_root)
+            new_root.mainloop()
