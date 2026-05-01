@@ -10,13 +10,15 @@ from category_navigation import CategoryNavigation
 from cart_manager import CartManager
 from quantity_dialog import QuantityDialog
 from receipt_module import show_receipt_window
-from autodeduct import auto_deduct_stock
 
 # Database connection
 def connect_db():
     import os
     db_path = os.path.join(os.path.dirname(__file__), "sales_inventory.db")
-    return sqlite3.connect(db_path)
+    conn = sqlite3.connect(db_path, timeout=10)
+    conn.execute("PRAGMA journal_mode=WAL")
+    return conn
+
 
 class ChizzlingPOS:
     def __init__(self, root):
@@ -24,46 +26,34 @@ class ChizzlingPOS:
         self.root.title("Chizzling POS System")
         self.root.configure(bg="#FAF3E1")
         self.root.state("zoomed")
-        
-        # Configure grid
+
         self.root.grid_columnconfigure(0, weight=1)
         self.root.grid_columnconfigure(1, weight=1)
         self.root.grid_columnconfigure(2, weight=1)
         self.root.grid_rowconfigure(4, weight=1)
-        
-        # Initialize components
+
         self.products = []
         self.setup_components()
         self.root.update()
         self.load_products()
-    
+
     def setup_components(self):
-        """Initialize all POS components"""
-        # Header
         self.header = POSHeader(self.root)
-        
-        # Product display
         self.product_display = ProductDisplay(self.root, self)
-        
-        # Category navigation
         self.category_nav = CategoryNavigation(self.root, self)
-        
-        # Cart manager
         self.cart_manager = CartManager(self.root, self)
-    
+
     def load_products(self, category=None):
-        """Load products from database"""
         conn = connect_db()
         cursor = conn.cursor()
 
-        # Ensure category column exists
         cursor.execute("PRAGMA table_info(products)")
         columns = [row[1] for row in cursor.fetchall()]
+
         if "category" not in columns:
             cursor.execute("ALTER TABLE products ADD COLUMN category TEXT DEFAULT 'All'")
             conn.commit()
 
-        # Load products with category filter
         if category and category.lower() not in ("all", ""):
             cursor.execute(
                 "SELECT id, name, price, COALESCE(category, 'All') FROM products WHERE LOWER(category)=?",
@@ -77,15 +67,12 @@ class ChizzlingPOS:
         self.products = cursor.fetchall()
         conn.close()
 
-        # Update product display
         self.product_display.display_products(self.products)
-    
+
     def show_quantity_dialog(self, product):
         product_id = product[0]
-
         stock = self.get_stock(product_id)
 
-        # 🚫 BLOCK if no stock
         if stock <= 0:
             messagebox.showerror("Out of Stock", "This product is currently out of stock.")
             return
@@ -95,14 +82,12 @@ class ChizzlingPOS:
             product,
             self.cart_manager,
             self.product_display._img_cache
-    )
-    
+        )
+
     def cancel_order(self):
-        """Cancel the current order"""
         self.cart_manager.cancel_order()
-    
+
     def confirm_payment(self):
-        """Process payment and complete transaction"""
         try:
             payment = float(self.cart_manager.payment_entry.get())
         except ValueError:
@@ -115,39 +100,55 @@ class ChizzlingPOS:
 
         change = payment - self.cart_manager.total
 
-        # Save transaction to database
         conn = connect_db()
         cursor = conn.cursor()
 
         current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        cursor.execute("INSERT INTO transactions (total, payment, change, date) VALUES (?, ?, ?, ?)",
-                       (self.cart_manager.total, payment, change, current_datetime))
+        cursor.execute(
+            "INSERT INTO transactions (total, payment, change, date) VALUES (?, ?, ?, ?)",
+            (self.cart_manager.total, payment, change, current_datetime)
+        )
+
         transaction_id = cursor.lastrowid
 
-        # Save transaction items
         for item in self.cart_manager.cart:
             subtotal = item['price'] * item['qty']
+
             cursor.execute("""
                 INSERT INTO transaction_items (transaction_id, product_id, quantity, subtotal)
                 VALUES (?, ?, ?, ?)
             """, (transaction_id, item['id'], item['qty'], subtotal))
-        auto_deduct_stock(cursor, item['id'], item['qty'])
+
+            # ✅ ONLY ONE DEDUCTION FUNCTION
+            self.process_full_sale(
+                cursor,
+                item['id'],
+                item['name'],
+                item['qty']
+            )
+
         conn.commit()
         conn.close()
 
         messagebox.showinfo("Success", f"Transaction Saved! \nChange: ₱{change:.2f}")
 
-        # Generate receipt
-        cart_data = [(item['id'], item['name'], item['qty'], item['price'] * item['qty']) 
-                     for item in self.cart_manager.cart]
-        show_receipt_window(self.root, transaction_id, current_datetime, 
-                          cart_data, self.cart_manager.total, change)
+        cart_data = [
+            (item['id'], item['name'], item['qty'], item['price'] * item['qty'])
+            for item in self.cart_manager.cart
+        ]
 
-        # Clear cart
+        show_receipt_window(
+            self.root,
+            transaction_id,
+            current_datetime,
+            cart_data,
+            self.cart_manager.total,
+            change
+        )
+
         self.cart_manager.clear_cart()
 
-    # Get current stock for a product
     def get_stock(self, product_id):
         conn = connect_db()
         cursor = conn.cursor()
@@ -156,19 +157,56 @@ class ChizzlingPOS:
         conn.close()
         return result[0] if result else 0
 
+    # ✅ SINGLE SAFE STOCK HANDLER (NO DOUBLE DEDUCTION)
+    def process_full_sale(self, cursor, product_id, product_name, quantity):
+
+        # PRODUCT STOCK
+        cursor.execute("SELECT stock FROM products WHERE id = ?", (product_id,))
+        result = cursor.fetchone()
+
+        cursor.execute(
+            "UPDATE products SET stock = stock - ? WHERE id = ?",
+            (quantity, product_id)
+            )
+
+        if not result:
+            messagebox.showerror("Product Error", "Product not found.")
+            return False
+
+        current_stock = result[0]
+
+        if current_stock < quantity:
+            messagebox.showerror("Stock Error", "Not enough stock.")
+            return False
+
+        # INGREDIENT STOCK
+        cursor.execute("""
+            SELECT ingredient_name, quantity
+            FROM recipe_ingredients
+            WHERE product_name = ?
+        """, (product_name,))
+
+        recipe = cursor.fetchall()
+        
+        for ingredient_name, qty in recipe:
+            total = quantity * qty
+
+            cursor.execute("""
+                UPDATE ingredients
+                SET stock = stock - ?
+                WHERE name = ?
+            """, (total, ingredient_name))
+
+            
+
+        return True
+
+
 def main():
-    """Main application entry point"""
     root = tk.Tk()
     app = ChizzlingPOS(root)
     root.mainloop()
 
+
 if __name__ == "__main__":
     main()
-
-"""
-Fix: Added function to get current stock for products that are out of stock. Disables the ability to add it to the cart
-
-Updates: 
-- Added new function to auto deduct and connect database from product management system. Added new function to get current stock for products that are out of stock. 
-- Added function to show products that are low on stock
-"""
