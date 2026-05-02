@@ -1,7 +1,5 @@
 # Test for US-25: Account Management
-# Test Objective: Ensure that admins can view, create, modify, and delete
-# user accounts, that validation prevents invalid input, and that role-based
-# access is correctly enforced.
+
 
 import pytest
 import sys
