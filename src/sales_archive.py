@@ -3,6 +3,16 @@ from tkinter import ttk, messagebox
 from datetime import datetime
 from dashboard_db import connect_db
 
+BG      = "#FFF8EE"
+SIDEBAR = "#7a3b10"
+ACCENT  = "#f5a623"
+YELLOW  = "#ffd966"
+FG_DARK = "#3b1f0a"
+FG_LIGHT = "#fff3e0"
+CONTENT = "#ffffff"
+ROW_ALT = "#fff3e0"
+FONT    = "Segoe UI"
+
 
 def _ensure_archive_tables():
     conn = connect_db()
@@ -35,109 +45,138 @@ MONTHS = ["January", "February", "March", "April", "May", "June",
 class SalesArchive:
     def __init__(self, root):
         self.root = root
-        self.root.title("Sales Archive - Chizzling POS")
-        self.root.geometry("1000x650")
-        self.root.configure(bg="#FAF3E1")
+        self.root.title("Sales Archive — Chizzling POS")
+        self.root.configure(bg=BG)
         self.root.update_idletasks()
         sw = self.root.winfo_screenwidth()
         sh = self.root.winfo_screenheight()
-        self.root.geometry(f"1000x650+{(sw-1000)//2}+{(sh-650)//2}")
+        self.root.geometry(f"1200x720+{(sw-1200)//2}+{(sh-720)//2}")
         _ensure_archive_tables()
         self._build_ui()
         self._load_archived(auto=True)
 
+    def _round_btn(self, parent, text, cmd, bg, fg, width=160, height=36):
+        c = tk.Canvas(parent, width=width, height=height, bg=parent.cget("bg"),
+                      highlightthickness=0, cursor="hand2")
+        c.pack(side="left", padx=6)
+        r = 12
+        def _draw(hover=False, c=c, bg=bg):
+            c.delete("all")
+            w, h = width, height
+            col = self._darken(bg) if hover else bg
+            c.create_polygon(r,0, w-r,0, w,0, w,r, w,h-r, w,h,
+                             w-r,h, r,h, 0,h, 0,h-r, 0,r, 0,0,
+                             smooth=True, fill=col, outline=col)
+            c.create_text(w//2, h//2, text=text, font=(FONT, 11, "bold"), fill=fg)
+        _draw()
+        c.bind("<Button-1>",  lambda e: cmd())
+        c.bind("<Enter>",     lambda e: _draw(True))
+        c.bind("<Leave>",     lambda e: _draw(False))
+        return c
+
+    def _darken(self, hex_color):
+        hex_color = hex_color.lstrip("#")
+        r, g, b = int(hex_color[0:2],16), int(hex_color[2:4],16), int(hex_color[4:6],16)
+        r, g, b = max(0,r-30), max(0,g-30), max(0,b-30)
+        return f"#{r:02x}{g:02x}{b:02x}"
+
     def _build_ui(self):
         # Header
-        tk.Label(self.root, text="SALES ARCHIVE", font=("Arial", 16, "bold"),
-                 bg="#FF6600", fg="white").pack(fill="x", pady=0, ipady=12)
-
-        # Controls
-        ctrl = tk.Frame(self.root, bg="#FAF3E1")
-        ctrl.pack(fill="x", padx=20, pady=12)
-
-        tk.Label(ctrl, text="Archive month:",
-                 font=("Arial", 11), bg="#FAF3E1").pack(side="left", padx=(0, 8))
+        header = tk.Frame(self.root, bg=SIDEBAR, height=52)
+        header.pack(fill="x")
+        header.pack_propagate(False)
+        tk.Label(header, text="🗂  Sales Archive",
+                 font=(FONT, 14, "bold"), bg=SIDEBAR, fg=YELLOW).pack(side="left", padx=20, pady=10)
+        tk.Frame(self.root, bg=ACCENT, height=3).pack(fill="x")
+        tk.Frame(self.root, bg=YELLOW, height=2).pack(fill="x")
 
         now = datetime.now()
-
-        self.month_var = tk.StringVar(value=MONTHS[now.month - 2] if now.month > 1 else "December")
-        month_cb = ttk.Combobox(ctrl, textvariable=self.month_var, width=12,
-                                values=MONTHS, state="readonly")
-        month_cb.pack(side="left")
-
         current_year = now.year
-        self.year_var = tk.StringVar(value=str(current_year if now.month > 1 else current_year - 1))
-        year_cb = ttk.Combobox(ctrl, textvariable=self.year_var, width=6,
-                               values=[str(y) for y in range(current_year - 5, current_year + 1)],
-                               state="readonly")
-        year_cb.pack(side="left", padx=(4, 16))
-
-        tk.Button(ctrl, text="Archive Month", command=self._archive_sales,
-                  bg="#FF6600", fg="white", font=("Arial", 11, "bold"),
-                  width=14, relief="raised").pack(side="left", padx=4)
-
-        # Restore section
-        tk.Label(ctrl, text="  |  Restore month:",
-                 font=("Arial", 11), bg="#FAF3E1").pack(side="left", padx=(8, 8))
-
-        self.restore_month_var = tk.StringVar(value=MONTHS[now.month - 2] if now.month > 1 else "December")
-        ttk.Combobox(ctrl, textvariable=self.restore_month_var, width=12,
-                     values=MONTHS, state="readonly").pack(side="left")
-
-        self.restore_year_var = tk.StringVar(value=str(current_year if now.month > 1 else current_year - 1))
-        ttk.Combobox(ctrl, textvariable=self.restore_year_var, width=6,
-                     values=[str(y) for y in range(current_year - 5, current_year + 1)],
-                     state="readonly").pack(side="left", padx=(4, 8))
-
-        tk.Button(ctrl, text="Restore Month", command=self._restore_by_month,
-                  bg="#28A745", fg="white", font=("Arial", 11, "bold"),
-                  width=14, relief="raised").pack(side="left", padx=4)
-
-        tk.Button(ctrl, text="Delete Month", command=self._delete_by_month,
-                  bg="#DC3545", fg="white", font=("Arial", 11, "bold"),
-                  width=13, relief="raised").pack(side="left", padx=4)
 
         # Summary label
         self.summary_var = tk.StringVar(value="")
         tk.Label(self.root, textvariable=self.summary_var,
-                 font=("Arial", 10), bg="#FAF3E1", fg="#555").pack(anchor="w", padx=20)
+                 font=(FONT, 11), bg=BG, fg=FG_DARK).pack(anchor="w", padx=24, pady=(6, 0))
 
-        # View filter row
-        view_row = tk.Frame(self.root, bg="#FAF3E1")
-        view_row.pack(fill="x", padx=20, pady=(0, 6))
-
-        tk.Label(view_row, text="View month:", font=("Arial", 11), bg="#FAF3E1").pack(side="left", padx=(0, 8))
-
-        self.view_month_var = tk.StringVar(value="All")
-        ttk.Combobox(view_row, textvariable=self.view_month_var, width=12,
-                     values=["All"] + MONTHS, state="readonly").pack(side="left")
-
-        self.view_year_var = tk.StringVar(value=str(current_year))
-        ttk.Combobox(view_row, textvariable=self.view_year_var, width=6,
+        # ── Row 1: Archive ────────────────────────────────────────────────────
+        row1 = tk.Frame(self.root, bg=BG)
+        row1.pack(fill="x", padx=24, pady=(14, 4))
+        tk.Label(row1, text="Archive Month:", font=(FONT, 11, "bold"),
+                 bg=BG, fg=FG_DARK).pack(side="left", padx=(0, 8))
+        self.month_var = tk.StringVar(value=MONTHS[now.month - 2] if now.month > 1 else "December")
+        ttk.Combobox(row1, textvariable=self.month_var, width=13,
+                     values=MONTHS, state="readonly", font=(FONT, 11)).pack(side="left")
+        self.year_var = tk.StringVar(value=str(current_year if now.month > 1 else current_year - 1))
+        ttk.Combobox(row1, textvariable=self.year_var, width=7,
                      values=[str(y) for y in range(current_year - 5, current_year + 1)],
-                     state="readonly").pack(side="left", padx=(4, 8))
+                     state="readonly", font=(FONT, 11)).pack(side="left", padx=(6, 16))
+        self._round_btn(row1, "🗂  Archive Month", self._archive_sales, SIDEBAR, FG_LIGHT, 180)
 
-        tk.Button(view_row, text="View", command=self._load_archived,
-                  bg="#007BFF", fg="white", font=("Arial", 11, "bold"),
-                  width=8, relief="raised").pack(side="left", padx=4)
+        # ── Row 2: Restore / Delete / View ───────────────────────────────────
+        row2 = tk.Frame(self.root, bg=BG)
+        row2.pack(fill="x", padx=24, pady=(4, 8))
+        tk.Label(row2, text="Restore / Delete:", font=(FONT, 11, "bold"),
+                 bg=BG, fg=FG_DARK).pack(side="left", padx=(0, 8))
+        self.restore_month_var = tk.StringVar(value=MONTHS[now.month - 2] if now.month > 1 else "December")
+        ttk.Combobox(row2, textvariable=self.restore_month_var, width=13,
+                     values=MONTHS, state="readonly", font=(FONT, 11)).pack(side="left")
+        self.restore_year_var = tk.StringVar(value=str(current_year if now.month > 1 else current_year - 1))
+        ttk.Combobox(row2, textvariable=self.restore_year_var, width=7,
+                     values=[str(y) for y in range(current_year - 5, current_year + 1)],
+                     state="readonly", font=(FONT, 11)).pack(side="left", padx=(6, 16))
+        self._round_btn(row2, "↩  Restore",     self._restore_by_month, ACCENT,   FG_DARK,  140)
+        self._round_btn(row2, "🗑  Delete",      self._delete_by_month,  "#8b0000", FG_LIGHT, 130)
+
+        tk.Frame(row2, bg=ACCENT, width=2, height=30).pack(side="left", padx=16)
+
+        tk.Label(row2, text="View:", font=(FONT, 11, "bold"),
+                 bg=BG, fg=FG_DARK).pack(side="left", padx=(0, 8))
+        self.view_month_var = tk.StringVar(value="All")
+        ttk.Combobox(row2, textvariable=self.view_month_var, width=13,
+                     values=["All"] + MONTHS, state="readonly",
+                     font=(FONT, 11)).pack(side="left")
+        self.view_year_var = tk.StringVar(value=str(current_year))
+        ttk.Combobox(row2, textvariable=self.view_year_var, width=7,
+                     values=[str(y) for y in range(current_year - 5, current_year + 1)],
+                     state="readonly", font=(FONT, 11)).pack(side="left", padx=(6, 8))
+        self._round_btn(row2, "🔍  View", self._load_archived, YELLOW, FG_DARK, 120)
 
         # Table
-        table_frame = tk.Frame(self.root, bg="#FAF3E1")
-        table_frame.pack(fill="both", expand=True, padx=20, pady=(0, 20))
+        style = ttk.Style()
+        style.theme_use("clam")
+        style.configure("Arc.Treeview",
+                         background=CONTENT, fieldbackground=CONTENT,
+                         foreground=FG_DARK, font=(FONT, 11), rowheight=30)
+        style.configure("Arc.Treeview.Heading",
+                         background=SIDEBAR, foreground=FG_LIGHT,
+                         font=(FONT, 11, "bold"), relief="flat")
+        style.map("Arc.Treeview",
+                  background=[("selected", ACCENT)],
+                  foreground=[("selected", FG_DARK)])
+
+        table_frame = tk.Frame(self.root, bg=BG)
+        table_frame.pack(fill="both", expand=True, padx=20, pady=(0, 16))
 
         cols = ("ID", "Date", "Total", "Payment", "Change", "Archived On")
         self.tree = ttk.Treeview(table_frame, columns=cols, show="headings",
-                                 selectmode="extended")
+                                 selectmode="extended", style="Arc.Treeview")
+        self.tree.tag_configure("odd",  background=CONTENT)
+        self.tree.tag_configure("even", background=ROW_ALT)
 
-        widths = [50, 160, 90, 90, 90, 160]
-        for col, w in zip(cols, widths):
+        widths = [60, 160, 110, 110, 110, 180]
+        anchors = ["center", "center", "e", "e", "e", "center"]
+        for col, w, anc in zip(cols, widths, anchors):
             self.tree.heading(col, text=col)
-            self.tree.column(col, width=w, anchor="center")
+            self.tree.column(col, width=w, anchor=anc)
 
         vsb = ttk.Scrollbar(table_frame, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=vsb.set)
-        self.tree.pack(side="left", fill="both", expand=True)
         vsb.pack(side="right", fill="y")
+        self.tree.pack(side="left", fill="both", expand=True)
+
+        # Bottom strip
+        tk.Frame(self.root, bg=ACCENT, height=3).pack(fill="x", side="bottom")
+        tk.Frame(self.root, bg=SIDEBAR, height=8).pack(fill="x", side="bottom")
 
     def _load_archived(self, auto=False):
         self.tree.delete(*self.tree.get_children())
@@ -159,11 +198,12 @@ class SalesArchive:
             rows = cur.fetchall()
         conn.close()
 
-        for row in rows:
+        for i, row in enumerate(rows):
             tid, date, total, payment, change, archived = row
-            self.tree.insert("", "end", iid=str(tid),
-                             values=(tid, date, f"\u20b1{total:.2f}",
-                                     f"\u20b1{payment:.2f}", f"\u20b1{change:.2f}", archived))
+            tag = "even" if i % 2 == 0 else "odd"
+            self.tree.insert("", "end", iid=str(tid), tags=(tag,),
+                             values=(tid, date, f"₱{total:.2f}",
+                                     f"₱{payment:.2f}", f"₱{change:.2f}", archived))
 
         count = len(rows)
         total_val = sum(r[2] for r in rows)

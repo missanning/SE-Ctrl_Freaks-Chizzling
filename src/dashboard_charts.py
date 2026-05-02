@@ -17,8 +17,9 @@ def _open_html(fig, title, header_color):
     <meta charset="UTF-8">
     <title>Chizzling POS - {title}</title>
     <style>
-        body {{ font-family: Arial, sans-serif; margin: 20px; background-color: #FAF3E1; }}
-        .header {{ background-color: {header_color}; color: white; padding: 20px; text-align: center; margin-bottom: 20px; }}
+        body {{ font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background-color: #FFF8EE; }}
+        .header {{ background-color: {header_color}; color: #fff3e0; padding: 20px 32px; margin-bottom: 24px; }}
+        .header h1 {{ margin: 0; font-size: 22px; }}
     </style>
 </head>
 <body>
@@ -35,7 +36,7 @@ def _open_html(fig, title, header_color):
 # ── Top Products chart ────────────────────────────────────────────────────────
 
 def open_top_products_chart(fig):
-    _open_html(fig, "Sales Analytics", "#FF6600")
+    _open_html(fig, "Sales Analytics", "#7a3b10")
 
 
 def build_top_products_figure(products, quantities, sales, title, screen_width):
@@ -46,13 +47,13 @@ def build_top_products_figure(products, quantities, sales, title, screen_width):
     )
     fig.add_trace(go.Bar(
         y=products, x=quantities, orientation='h', name='Quantity',
-        marker_color='#28A745', text=[f'{int(q)}' for q in quantities],
+        marker_color='#7a3b10', text=[f'{int(q)}' for q in quantities],
         textposition='outside',
         hovertemplate='<b>%{y}</b><br>Quantity: %{x}<extra></extra>'
     ), row=1, col=1)
     fig.add_trace(go.Bar(
         y=products, x=sales, orientation='h', name='Revenue',
-        marker_color='#007BFF', text=[f'₱{s:.0f}' for s in sales],
+        marker_color='#f5a623', text=[f'₱{s:.0f}' for s in sales],
         textposition='outside',
         hovertemplate='<b>%{y}</b><br>Revenue: ₱%{x:.2f}<extra></extra>'
     ), row=1, col=2)
@@ -61,12 +62,12 @@ def build_top_products_figure(products, quantities, sales, title, screen_width):
                'font': {'size': 18, 'color': '#333'}},
         showlegend=False, height=500,
         width=min(int(screen_width * 0.8), 1400),
-        plot_bgcolor='white', paper_bgcolor='white',
-        font={'family': 'Arial', 'size': 12},
+        plot_bgcolor='#FFF8EE', paper_bgcolor='#FFF8EE',
+        font={'family': 'Segoe UI', 'size': 12},
         margin=dict(l=40, r=40, t=80, b=60)
     )
-    fig.update_xaxes(title_text="Quantity Sold", row=1, col=1, gridcolor='#E5E5E5')
-    fig.update_xaxes(title_text="Revenue (₱)", row=1, col=2, gridcolor='#E5E5E5')
+    fig.update_xaxes(title_text="Quantity Sold", row=1, col=1, gridcolor='#ffd966')
+    fig.update_xaxes(title_text="Revenue (₱)", row=1, col=2, gridcolor='#ffd966')
     fig.update_yaxes(categoryorder='total ascending', row=1, col=1)
     fig.update_yaxes(categoryorder='total ascending', row=1, col=2)
     return fig
@@ -93,16 +94,16 @@ def open_revenue_chart(results, title, screen_width):
                [{"type": "scatter"}, {"type": "pie"}]]
     )
     fig.add_trace(go.Bar(x=products, y=revenues, name='Total Revenue',
-                         marker_color='#28A745',
+                         marker_color='#7a3b10',
                          text=[f'₱{r:.0f}' for r in revenues],
                          textposition='outside'), row=1, col=1)
     fig.add_trace(go.Bar(x=qty_products, y=qty_values, name='Quantity Sold',
-                         marker_color='#007BFF',
+                         marker_color='#f5a623',
                          text=[f'{int(q)}' for q in qty_values],
                          textposition='outside'), row=1, col=2)
     fig.add_trace(go.Scatter(x=prices, y=revenues, mode='markers+text',
                              name='Price vs Revenue',
-                             marker=dict(size=10, color='#FFC107'),
+                             marker=dict(size=10, color='#ffd966'),
                              text=[p[:10] + '...' if len(p) > 10 else p for p in products],
                              textposition='top center'), row=2, col=1)
     fig.add_trace(go.Pie(
@@ -114,8 +115,8 @@ def open_revenue_chart(results, title, screen_width):
                'xanchor': 'center', 'font': {'size': 20, 'color': '#333'}},
         showlegend=False, height=800,
         width=min(int(screen_width * 0.9), 1600),
-        plot_bgcolor='white', paper_bgcolor='white',
-        font={'family': 'Arial', 'size': 11}
+        plot_bgcolor='#FFF8EE', paper_bgcolor='#FFF8EE',
+        font={'family': 'Segoe UI', 'size': 11}
     )
     fig.update_xaxes(title_text="Products", row=1, col=1, tickangle=45)
     fig.update_yaxes(title_text="Revenue (₱)", row=1, col=1)
@@ -124,7 +125,7 @@ def open_revenue_chart(results, title, screen_width):
     fig.update_xaxes(title_text="Unit Price (₱)", row=2, col=1)
     fig.update_yaxes(title_text="Revenue (₱)", row=2, col=1)
 
-    _open_html(fig, "Revenue Analysis", "#17A2B8")
+    _open_html(fig, "Revenue Analysis", "#7a3b10")
 
 
 # ── Time-series helpers ───────────────────────────────────────────────────────
@@ -178,14 +179,14 @@ def open_sales_time_series(period, screen_width):
 
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=labels, y=sales_data, mode='lines+markers+text',
-                             name='Total Sales', line=dict(color='#28A745', width=3),
-                             marker=dict(size=8, color='#28A745'),
+                             name='Total Sales', line=dict(color='#7a3b10', width=3),
+                             marker=dict(size=8, color='#7a3b10'),
                              text=[f'₱{s:.0f}' for s in sales_data],
                              textposition='top center',
                              hovertemplate='<b>%{x}</b><br>Sales: ₱%{y:.2f}<extra></extra>'))
     fig.add_trace(go.Scatter(x=labels, y=transaction_data, mode='lines+markers+text',
-                             name='Transactions', line=dict(color='#007BFF', width=3),
-                             marker=dict(size=8, color='#007BFF'),
+                             name='Transactions', line=dict(color='#f5a623', width=3),
+                             marker=dict(size=8, color='#f5a623'),
                              text=[str(t) for t in transaction_data],
                              textposition='bottom center', yaxis='y2',
                              hovertemplate='<b>%{x}</b><br>Transactions: %{y}<extra></extra>'))
@@ -193,14 +194,14 @@ def open_sales_time_series(period, screen_width):
         title={'text': f'<b>{title}</b>', 'x': 0.5, 'xanchor': 'center',
                'font': {'size': 18, 'color': '#333'}},
         xaxis_title='Time Period',
-        yaxis=dict(title='Sales (₱)', side='left', color='#28A745'),
-        yaxis2=dict(title='Number of Transactions', side='right', overlaying='y', color='#007BFF'),
+        yaxis=dict(title='Sales (₱)', side='left', color='#7a3b10'),
+        yaxis2=dict(title='Number of Transactions', side='right', overlaying='y', color='#f5a623'),
         height=500, width=min(int(screen_width * 0.8), 1200),
-        plot_bgcolor='white', paper_bgcolor='white',
-        font={'family': 'Arial', 'size': 12},
+        plot_bgcolor='#FFF8EE', paper_bgcolor='#FFF8EE',
+        font={'family': 'Segoe UI', 'size': 12},
         legend=dict(x=0.02, y=0.98), hovermode='x unified'
     )
-    _open_html(fig, "Sales Progression", "#28A745")
+    _open_html(fig, "Sales Progression", "#7a3b10")
 
 
 def open_revenue_time_series(period, screen_width):
@@ -232,14 +233,14 @@ def open_revenue_time_series(period, screen_width):
 
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=labels, y=revenue_data, mode='lines+markers+text',
-                             name='Total Revenue', line=dict(color='#17A2B8', width=3),
-                             marker=dict(size=8, color='#17A2B8'),
+                             name='Total Revenue', line=dict(color='#7a3b10', width=3),
+                             marker=dict(size=8, color='#7a3b10'),
                              text=[f'₱{r:.0f}' for r in revenue_data],
                              textposition='top center',
                              hovertemplate='<b>%{x}</b><br>Revenue: ₱%{y:.2f}<extra></extra>'))
     fig.add_trace(go.Scatter(x=labels, y=quantity_data, mode='lines+markers+text',
-                             name='Items Sold', line=dict(color='#FFC107', width=3),
-                             marker=dict(size=8, color='#FFC107'),
+                             name='Items Sold', line=dict(color='#f5a623', width=3),
+                             marker=dict(size=8, color='#f5a623'),
                              text=[str(int(q)) for q in quantity_data],
                              textposition='bottom center', yaxis='y2',
                              hovertemplate='<b>%{x}</b><br>Items Sold: %{y}<extra></extra>'))
@@ -247,11 +248,11 @@ def open_revenue_time_series(period, screen_width):
         title={'text': f'<b>{title}</b>', 'x': 0.5, 'xanchor': 'center',
                'font': {'size': 18, 'color': '#333'}},
         xaxis_title='Time Period',
-        yaxis=dict(title='Revenue (₱)', side='left', color='#17A2B8'),
-        yaxis2=dict(title='Items Sold', side='right', overlaying='y', color='#FFC107'),
+        yaxis=dict(title='Revenue (₱)', side='left', color='#7a3b10'),
+        yaxis2=dict(title='Items Sold', side='right', overlaying='y', color='#f5a623'),
         height=500, width=min(int(screen_width * 0.8), 1200),
-        plot_bgcolor='white', paper_bgcolor='white',
-        font={'family': 'Arial', 'size': 12},
+        plot_bgcolor='#FFF8EE', paper_bgcolor='#FFF8EE',
+        font={'family': 'Segoe UI', 'size': 12},
         legend=dict(x=0.02, y=0.98), hovermode='x unified'
     )
-    _open_html(fig, "Revenue Progression", "#17A2B8")
+    _open_html(fig, "Revenue Progression", "#7a3b10")
