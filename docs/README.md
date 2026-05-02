@@ -26,3 +26,30 @@ One of the strongest aspects of the system is its proper separation of concerns 
 While the system functions correctly, input validation and error handling can still be improved. The current implementation includes only minimal validation checks. Strengthening validation rules, improving error handling mechanisms, and implementing more secure authentication practices would enhance the system’s overall reliability. These improvements would make the system more secure, stable, and production-ready.
 
 Several valuable lessons were learned during the implementation process. Using proper table relationships and foreign keys made transaction tracking more reliable and ensured data integrity across records. Careful database planning simplifies future expansion and improves reporting capabilities. Separating the receipt module from the main POS system allowed independent testing and easier feature additions without affecting core functionality. Additionally, programming the login system was manageable because Tkinter had already been introduced during the first year. Having prior knowledge of the framework helped speed up development and made the implementation process more efficient.
+
+5. CI/CD Pipeline & Automated Governance (YAML)
+Our team implemented an automated CI/CD (Continuous Integration/Continuous Deployment) pipeline to ensure that our project maintains high standards throughout the development lifecycle. These processes are defined using YAML configuration files located in the .github/workflows directory.
+
+A. Workflow Overview
+We have established two primary automated "gatekeepers" to validate every contribution before it is merged into our main codebase:
+
+| Workflow | Scope | Business Value |
+| :--- | :--- | :--- |
+| **`python-app.yml`** | Functional Validation | Ensures 100% logic accuracy in financial calculations and data filtering. |
+| **`enforce-naming.yml`** | Standard Compliance | Guarantees a clean, searchable project history and automated changelog compatibility. |
+
+B. Key Technical Implementations
+Virtual Environment Orchestration: Each workflow execution spins up a fresh ubuntu-latest container. This validates that the application is truly portable and all dependencies are correctly listed in requirements.txt.
+
+Semantic Enforcement: We utilize amannn/action-semantic-pull-request@v5 to enforce the Conventional Commits standard. This ensures every contribution is categorized (e.g., feat, fix, chore), making it easier to track progress against the Project Roadmap.
+
+Automated Verification: The system performs a full suite of 292 tests. If an AssertionError occurs (e.g., a date filtering mismatch), the merge is automatically blocked, protecting the integrity of the main branch.
+
+C. The "Manner" of Merging
+Our CI/CD isn't just a script; it’s a policy. By requiring these YAML workflows to pass (Green Status), we achieve:
+
+Zero-Bug Latency: Logic errors are identified within seconds of code submission.
+
+Auditability: Every code change is linked to a successful automation run, providing a transparent history for stakeholders.
+
+Reduced Technical Debt: Standardized naming and linting ensure the codebase remains maintainable as the project scales.
