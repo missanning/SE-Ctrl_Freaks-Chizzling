@@ -28,6 +28,7 @@ jobs:
             style
             refactor
             test
+            merge
           requireScope: false
 
   check-commit-message:
@@ -40,7 +41,7 @@ jobs:
 
       - name: Check Commit Messages
         run: |
-          PATTERN="^(feat|fix|chore|docs|style|refactor|test)(\(.+\))?: .+"
+          PATTERN="^(feat|fix|chore|docs|style|refactor|test|merge)(\(.+\))?: .+"
           INVALID=0
 
           if [ "${{ github.event_name }}" == "pull_request" ]; then

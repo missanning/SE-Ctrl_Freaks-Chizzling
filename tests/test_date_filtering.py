@@ -33,19 +33,22 @@ def temp_db():
     )
     """)
 
-    today = datetime.now().strftime("%Y-%m-%d")
-    yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
-    monday = (datetime.now() - timedelta(days=datetime.now().weekday())).strftime("%Y-%m-%d")
-    last_week = (datetime.now() - timedelta(days=10)).strftime("%Y-%m-%d")
+    today = datetime.now()
+    today_str = today.strftime("%Y-%m-%d")
+    yesterday_str = (today - timedelta(days=1)).strftime("%Y-%m-%d")
+    # Pick a day within this week that is never today: use tomorrow if Monday, else yesterday
+    offset = 1 if today.weekday() == 0 else -1
+    this_week_not_today_str = (today + timedelta(days=offset)).strftime("%Y-%m-%d")
+    last_week_str = (today - timedelta(days=10)).strftime("%Y-%m-%d")
 
     cursor.executemany(
         "INSERT INTO transactions (total, payment, change, date) VALUES (?, ?, ?, ?)",
         [
-            (199.0, 200.0, 1.0,   f"{today} 10:00:00"),
-            (80.0,  100.0, 20.0,  f"{today} 14:00:00"),
-            (150.0, 150.0, 0.0,   f"{yesterday} 09:00:00"),
-            (250.0, 300.0, 50.0,  f"{monday} 11:00:00"),
-            (500.0, 500.0, 0.0,   f"{last_week} 10:00:00"),
+            (199.0, 200.0, 1.0,   f"{today_str} 10:00:00"),
+            (80.0,  100.0, 20.0,  f"{today_str} 14:00:00"),
+            (150.0, 150.0, 0.0,   f"{yesterday_str} 09:00:00"),
+            (250.0, 300.0, 50.0,  f"{this_week_not_today_str} 11:00:00"),
+            (500.0, 500.0, 0.0,   f"{last_week_str} 10:00:00"),
         ]
     )
 

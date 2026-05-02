@@ -3,7 +3,7 @@ from tkinter import ttk
 from tkinter import messagebox
 from database_setup import connect_db
 
-class ArchiveFeature:
+class ArchiveFeature2:
     def __init__(self, root):
         self.root = root
         self.root.title("Archive Feature")
@@ -63,6 +63,15 @@ class ArchiveFeature:
         tk.Button(right_frame, text="Unarchive", width=22,
                   command=self.unarchive_products).pack(pady=5)
 
+        # DELETE
+        tk.Label(right_frame, text="Delete Permanently").pack(pady=10)
+
+        self.delete_entry = tk.Entry(right_frame, width=25)
+        self.delete_entry.pack(pady=5)
+
+        tk.Button(right_frame, text="Delete", width=22,
+                  command=self.delete_product).pack(pady=5)
+
         # EDIT (still empty function)
         tk.Button(right_frame, text="Edit", width=22).pack(pady=10)
 
@@ -74,7 +83,7 @@ class ArchiveFeature:
         conn = connect_db()
         cursor = conn.cursor()
 
-        cursor.execute("SELECT * FROM product_archive")
+        cursor.execute("SELECT * FROM ingredients_archive")
         rows = cursor.fetchall()
 
         self.tree.delete(*self.tree.get_children())
@@ -100,7 +109,7 @@ class ArchiveFeature:
         cursor = conn.cursor()
 
         cursor.execute("""
-        SELECT * FROM product_archive
+        SELECT * FROM ingredients_archive
         WHERE id LIKE ? OR name LIKE ?
         """, ('%' + keyword + '%', '%' + keyword + '%'))
 
@@ -123,7 +132,7 @@ class ArchiveFeature:
         conn = connect_db()
         cursor = conn.cursor()
 
-        cursor.execute("SELECT * FROM product_archive WHERE id=? OR name=?", (keyword, keyword))
+        cursor.execute("SELECT * FROM ingredients_archive WHERE id=? OR name=?", (keyword, keyword))
         result = cursor.fetchone()
 
         if not result:
@@ -136,7 +145,7 @@ class ArchiveFeature:
             conn.close()
             return
         
-        cursor.execute("DELETE FROM product_archive WHERE id=? OR name=?", (keyword, keyword))
+        cursor.execute("DELETE FROM ingredients_archive WHERE id=? OR name=?", (keyword, keyword))
 
         conn.commit()
         conn.close()
@@ -155,7 +164,7 @@ class ArchiveFeature:
         conn = connect_db()
         cursor = conn.cursor()
 
-        cursor.execute("SELECT * FROM product_archive WHERE id=? OR name=?", (keyword, keyword))
+        cursor.execute("SELECT * FROM ingredients_archive WHERE id=? OR name=?", (keyword, keyword))
         result = cursor.fetchone()
 
         if not result:
@@ -169,11 +178,11 @@ class ArchiveFeature:
             return
         
         cursor.execute("""
-        INSERT INTO products (name, price, stock)
-        SELECT name, price, stock FROM product_archive WHERE id=? OR name=?
+        INSERT INTO ingredients (name, price, stock)
+        SELECT name, price, stock FROM ingredients_archive WHERE id=? OR name=?
         """, (keyword, keyword))
 
-        cursor.execute("DELETE FROM product_archive WHERE id=? OR name=?", (keyword, keyword))
+        cursor.execute("DELETE FROM ingredients_archive WHERE id=? OR name=?", (keyword, keyword))
 
         conn.commit()
         conn.close()
@@ -186,5 +195,5 @@ class ArchiveFeature:
 # RUN
 if __name__ == "__main__":
     root = tk.Tk()
-    app = ArchiveFeature(root)
+    app = ArchiveFeature2(root)
     root.mainloop()

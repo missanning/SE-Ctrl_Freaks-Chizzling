@@ -15,7 +15,6 @@ class TransactionAnalyticsApp:
         self.root.title("Transaction Analytics - Chizzling POS")
         self.root.state('zoomed')
         self.root.configure(bg="#FAF3E1")
-        
         self.create_widgets()
         self.load_transactions()
     
