@@ -1,7 +1,5 @@
 # Test for US-06: Restock Suggestions
-# Test Objective: Ensure that the system correctly identifies low-stock products,
-# suggests items for restocking when stock falls below the threshold, and
-# displays restock recommendations when the stock clerk views inventory.
+
 
 import pytest
 import sys
