@@ -1,7 +1,4 @@
 # Test for US-16: Sales Charts / Graphs
-# Test Objective: Ensure that ranking charts and time-series progression charts
-# are built correctly, period date calculations are accurate, and dual y-axes
-# with hover tooltips are present in progression charts.
 
 import pytest
 import sys

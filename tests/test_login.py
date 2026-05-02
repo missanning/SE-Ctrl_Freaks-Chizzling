@@ -1,7 +1,5 @@
 # Test for US-05: System Login Requirement
-# Test Objective: Ensure that the login system protects the application from
-# unauthorized access, grants access on valid credentials, and displays
-# appropriate error messages on invalid credentials.
+
 
 import pytest
 import sys

@@ -1,6 +1,5 @@
 # Test for US-11: Category Navigation
-# Test Objective: Ensure that category buttons correctly filter products by category,
-# "All" shows every item, default view loads all items, and empty categories show nothing.
+
 
 import pytest
 import sys

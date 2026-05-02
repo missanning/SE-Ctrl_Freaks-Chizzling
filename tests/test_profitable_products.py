@@ -1,6 +1,5 @@
 # Test for US-07: Profitable Products Report
-# Test Objective: Ensure that products are correctly ranked by total revenue,
-# revenue values and quantities are accurate, and results update per time period.
+
 
 import pytest
 import sys

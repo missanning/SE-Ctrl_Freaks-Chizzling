@@ -1,6 +1,5 @@
 # Test for US-12: Cart Management
-# Test Objective: Ensure that items can be added, quantity adjusted, removed from cart,
-# and that totals and change are automatically recalculated on every cart change.
+
 
 import pytest
 import sys
