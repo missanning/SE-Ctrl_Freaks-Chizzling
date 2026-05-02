@@ -155,11 +155,11 @@ class MainApp:
                   command=self._toggle_pw).pack(side=tk.RIGHT, padx=4)
 
         # ── Status ──
-        self.display_label = tk.Label(card, text="", font=FONT_LABEL,
-                                      bg="#FDECEA", fg="#C0392B",
+        self.display_label = tk.Label(card, text=" ", font=(FONT_FAM, 8),
+                                      bg=CARD_BG, fg="#C0392B",
                                       wraplength=320, justify="center",
-                                      relief="flat", padx=8, pady=6)
-        # don't pack yet — only shown when there's an error
+                                      relief="flat", padx=0, pady=0)
+        self.display_label.pack(fill="x", pady=(4, 0))
 
         # ── Login button ──
         btn_w, btn_h = 280, 40
@@ -195,12 +195,10 @@ class MainApp:
             pass
 
     def _show_error(self, msg):
-        self.display_label.config(text=f"⚠  {msg}")
-        self.display_label.pack(fill="x", pady=(8, 0))
+        self.display_label.config(text=f"⚠  {msg}", bg=CARD_BG)
 
     def _clear_error(self):
-        self.display_label.config(text="")
-        self.display_label.pack_forget()
+        self.display_label.config(text=" ", bg=CARD_BG)
         self.entry_username.config(highlightthickness=0)
         self.entry_password.config(highlightthickness=0)
 
