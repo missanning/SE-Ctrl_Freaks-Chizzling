@@ -69,7 +69,13 @@ def temp_db():
     today = now.strftime("%Y-%m-%d")
     offset = 1 if now.weekday() == 0 else -1
     this_week_not_today = (now + timedelta(days=offset)).strftime("%Y-%m-%d")
-    first_of_month = now.replace(day=1).strftime("%Y-%m-%d")
+    # Use a date guaranteed to be this month but outside this week
+    monday = now - timedelta(days=now.weekday())
+    if monday.day > 7:
+        this_month_not_this_week = now.replace(day=1).strftime("%Y-%m-%d")
+    else:
+        safe_day = min(monday.day + 7, 28)
+        this_month_not_this_week = now.replace(day=safe_day).strftime("%Y-%m-%d")
     last_month = (now - timedelta(days=40)).strftime("%Y-%m-%d")
 
     # Transactions
@@ -78,7 +84,7 @@ def temp_db():
         [
             (398.0, 400.0, 2.0,  f"{today} 10:00:00"),              # id=1 today
             (160.0, 200.0, 40.0, f"{this_week_not_today} 09:00:00"), # id=2 this week
-            (117.0, 120.0, 3.0,  f"{first_of_month} 08:00:00"),     # id=3 this month
+            (117.0, 120.0, 3.0,  f"{this_month_not_this_week} 08:00:00"), # id=3 this month
             (300.0, 300.0, 0.0,  f"{last_month} 10:00:00"),         # id=4 last month
         ]
     )
