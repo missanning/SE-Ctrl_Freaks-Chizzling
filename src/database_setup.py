@@ -294,11 +294,12 @@ def insert_default_data():
     # RECIPES (ingredient usage per menu item)
     recipes = [
 
-    # Sizzling Sisig (5 ingredients)
+    # Sizzling Sisig (6 ingredients)
     ("Sizzling Sisig", "Pork", 100, "grams"),
     ("Sizzling Sisig", "Onion", 0.25, "pcs"),
     ("Sizzling Sisig", "Egg", 1, "pcs"),
     ("Sizzling Sisig", "Green Chili", 1, "pcs"),
+    ("Sizzling Sisig", "Butter", 10, "grams"),
     ("Sizzling Sisig", "Seasoning", 0.5, "tsp"),
 
     # Sizzling Liempo (4 ingredients)

@@ -1,6 +1,5 @@
 # Test for US-14: Product Browsing and Selection (Quantity Dialog)
-# Test Objective: Ensure that the quantity dialog correctly displays product details,
-# handles quantity adjustments, and properly adds the product to the cart.
+
 
 import pytest
 import sys

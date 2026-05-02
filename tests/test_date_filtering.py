@@ -1,6 +1,4 @@
 # Test for US-15: Date Filtering / Time Controls
-# Test Objective: Ensure that switching between daily and weekly views correctly
-# filters and displays only the relevant sales data for the selected time period.
 
 import pytest
 import sys
