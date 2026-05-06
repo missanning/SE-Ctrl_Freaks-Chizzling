@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
+import os
 from database_setup import connect_db
 from Ingredients_Table import IngredientsTableWindow
 from Archive import ArchiveFeature
@@ -19,6 +20,8 @@ FONT_LABEL  = ("Segoe UI", 10, "bold")
 FONT_ENTRY  = ("Segoe UI", 10)
 FONT_BTN    = ("Segoe UI", 10, "bold")
 FONT_SMALL  = ("Segoe UI", 9)
+
+CATEGORIES = ["meals", "snacks", "drinks", "alcohol"]
 
 
 def styled_button(parent, text, command, bg=BROWN, fg=YELLOW, width=20):
@@ -296,8 +299,10 @@ class AddProductWindow:
         self.root.configure(bg=BG)
         self.root.grab_set()
         self.root.after(100, self.root.focus_force)
+        self._image_path = None  # selected source image path
+        self._preview_img = None
 
-        w, h = 380, 460
+        w, h = 420, 580
         x = (root.winfo_screenwidth() // 2) - (w // 2)
         y = (root.winfo_screenheight() // 2) - (h // 2)
         self.root.geometry(f"{w}x{h}+{x}+{y}")
@@ -312,15 +317,68 @@ class AddProductWindow:
         tk.Frame(root, bg=ACCENT, height=3).pack(fill="x")
         tk.Frame(root, bg=YELLOW, height=3).pack(fill="x")
 
-        form = tk.Frame(root, bg=BG, padx=30, pady=20)
+        form = tk.Frame(root, bg=BG, padx=30, pady=16)
         form.pack(fill="both", expand=True)
 
         self.e_name     = entry_field(form, "Product Name")
         self.e_price    = entry_field(form, "Price (₱)")
         self.e_stock    = entry_field(form, "Stock")
-        self.e_category = entry_field(form, "Category")
 
-        styled_button(form, "＋  Add Product", self._add, width=22).pack(pady=(18, 0), fill="x")
+        # Category dropdown
+        tk.Label(form, text="Category", font=FONT_LABEL,
+                 bg=BG, fg=BROWN, anchor="w").pack(fill="x", pady=(8, 0))
+        cat_border = tk.Frame(form, bg=ENTRY_BORDER, padx=1, pady=1)
+        cat_border.pack(fill="x", pady=(2, 0))
+        self.cat_var = tk.StringVar(value=CATEGORIES[0])
+        self.e_category = ttk.Combobox(cat_border, textvariable=self.cat_var,
+                                       values=CATEGORIES, state="readonly",
+                                       font=FONT_ENTRY)
+        self.e_category.pack(fill="x", ipady=5, padx=4)
+        self.e_category.bind("<FocusIn>",  lambda e: cat_border.config(bg=ACCENT))
+        self.e_category.bind("<FocusOut>", lambda e: cat_border.config(bg=ENTRY_BORDER))
+
+        # Image upload
+        tk.Label(form, text="Product Image  (required)", font=FONT_LABEL,
+                 bg=BG, fg=BROWN, anchor="w").pack(fill="x", pady=(8, 0))
+
+        img_row = tk.Frame(form, bg=BG)
+        img_row.pack(fill="x", pady=(4, 0))
+
+        # Preview box
+        self.preview_lbl = tk.Label(img_row, bg=ENTRY_BG, width=10, height=5,
+                                    text="No image", font=FONT_SMALL, fg=SUBTLE,
+                                    relief="flat",
+                                    highlightbackground=ENTRY_BORDER, highlightthickness=1)
+        self.preview_lbl.pack(side="left", padx=(0, 10))
+
+        btn_col = tk.Frame(img_row, bg=BG)
+        btn_col.pack(side="left", fill="y")
+        styled_button(btn_col, "📁  Browse Image", self._browse_image,
+                      bg=ACCENT, fg=BROWN, width=16).pack(pady=(0, 4))
+        self.img_name_lbl = tk.Label(btn_col, text="", font=FONT_SMALL,
+                                     bg=BG, fg=SUBTLE, wraplength=160, justify="left")
+        self.img_name_lbl.pack(anchor="w")
+
+        styled_button(form, "＋  Add Product", self._add, width=22).pack(pady=(16, 0), fill="x")
+
+    def _browse_image(self):
+        from tkinter import filedialog
+        path = filedialog.askopenfilename(
+            title="Select Product Image",
+            filetypes=[("Image files", "*.jpg *.jpeg *.png *.gif *.bmp")]
+        )
+        if not path:
+            return
+        self._image_path = path
+        self.img_name_lbl.config(text=os.path.basename(path))
+        # Show preview
+        try:
+            from PIL import Image, ImageTk
+            img = Image.open(path).resize((80, 60), Image.LANCZOS)
+            self._preview_img = ImageTk.PhotoImage(img)
+            self.preview_lbl.config(image=self._preview_img, text="")
+        except Exception:
+            self.preview_lbl.config(text="Preview\nunavailable")
 
     def _get_next_id(self):
         conn = connect_db()
@@ -336,13 +394,18 @@ class AddProductWindow:
         return expected
 
     def _add(self):
+        import shutil
         name     = self.e_name.get().strip()
         price    = self.e_price.get().strip()
         stock    = self.e_stock.get().strip()
-        category = self.e_category.get().strip()
+        category = self.cat_var.get()
 
         if not all([name, price, stock, category]):
             messagebox.showerror("Error", "Please fill in all fields.")
+            return
+
+        if not self._image_path:
+            messagebox.showerror("Error", "Please upload a product image.")
             return
 
         conn = connect_db()
@@ -353,6 +416,18 @@ class AddProductWindow:
             conn.close()
             return
 
+        # Copy image to assets folder with sanitized filename
+        ext      = os.path.splitext(self._image_path)[1].lower()
+        filename = name.lower().replace(" ", "_").replace("/", "-") + ext
+        assets_dir = os.path.join(os.path.dirname(__file__), "..", "assets", "food @chizzlin")
+        dest = os.path.join(assets_dir, filename)
+        try:
+            shutil.copy2(self._image_path, dest)
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to save image:\n{e}")
+            conn.close()
+            return
+
         cursor.execute(
             "INSERT INTO products (id, name, price, stock, category) VALUES (?, ?, ?, ?, ?)",
             (self._get_next_id(), name, price, stock, category)
@@ -360,7 +435,7 @@ class AddProductWindow:
         conn.commit()
         conn.close()
 
-        messagebox.showinfo("Success", "Product added successfully.")
+        messagebox.showinfo("Success", f"Product added successfully.\nImage saved as '{filename}'.")
         self.main_app.load_products()
         self.root.destroy()
 
@@ -376,8 +451,10 @@ class EditProductWindow:
         self.root.configure(bg=BG)
         self.root.grab_set()
         self.root.after(100, self.root.focus_force)
+        self._image_path  = None
+        self._preview_img = None
 
-        w, h = 380, 500
+        w, h = 420, 620
         x = (root.winfo_screenwidth() // 2) - (w // 2)
         y = (root.winfo_screenheight() // 2) - (h // 2)
         self.root.geometry(f"{w}x{h}+{x}+{y}")
@@ -392,23 +469,75 @@ class EditProductWindow:
         tk.Frame(root, bg=ACCENT, height=3).pack(fill="x")
         tk.Frame(root, bg=YELLOW, height=3).pack(fill="x")
 
-        form = tk.Frame(root, bg=BG, padx=30, pady=20)
+        form = tk.Frame(root, bg=BG, padx=30, pady=16)
         form.pack(fill="both", expand=True)
 
         self.e_id       = entry_field(form, "Product ID  (required)")
         self.e_name     = entry_field(form, "New Name  (leave blank to keep)")
         self.e_price    = entry_field(form, "New Price  (leave blank to keep)")
         self.e_stock    = entry_field(form, "New Stock  (leave blank to keep)")
-        self.e_category = entry_field(form, "New Category  (leave blank to keep)")
 
-        styled_button(form, "✎  Update Product", self._update, width=22).pack(pady=(18, 0), fill="x")
+        # Category dropdown
+        tk.Label(form, text="New Category  (leave blank to keep)", font=FONT_LABEL,
+                 bg=BG, fg=BROWN, anchor="w").pack(fill="x", pady=(8, 0))
+        cat_border = tk.Frame(form, bg=ENTRY_BORDER, padx=1, pady=1)
+        cat_border.pack(fill="x", pady=(2, 0))
+        self.cat_var = tk.StringVar(value="")
+        self.e_category = ttk.Combobox(cat_border, textvariable=self.cat_var,
+                                       values=[""] + CATEGORIES, state="readonly",
+                                       font=FONT_ENTRY)
+        self.e_category.pack(fill="x", ipady=5, padx=4)
+        self.e_category.bind("<FocusIn>",  lambda e: cat_border.config(bg=ACCENT))
+        self.e_category.bind("<FocusOut>", lambda e: cat_border.config(bg=ENTRY_BORDER))
+
+        # Image upload
+        tk.Label(form, text="New Image  (leave blank to keep current)", font=FONT_LABEL,
+                 bg=BG, fg=BROWN, anchor="w").pack(fill="x", pady=(8, 0))
+
+        img_row = tk.Frame(form, bg=BG)
+        img_row.pack(fill="x", pady=(4, 0))
+
+        self.preview_lbl = tk.Label(img_row, bg=ENTRY_BG, width=10, height=5,
+                                    text="No image\nselected", font=FONT_SMALL, fg=SUBTLE,
+                                    relief="flat",
+                                    highlightbackground=ENTRY_BORDER, highlightthickness=1)
+        self.preview_lbl.pack(side="left", padx=(0, 10))
+
+        btn_col = tk.Frame(img_row, bg=BG)
+        btn_col.pack(side="left", fill="y")
+        styled_button(btn_col, "📁  Browse Image", self._browse_image,
+                      bg=ACCENT, fg=BROWN, width=16).pack(pady=(0, 4))
+        self.img_name_lbl = tk.Label(btn_col, text="", font=FONT_SMALL,
+                                     bg=BG, fg=SUBTLE, wraplength=160, justify="left")
+        self.img_name_lbl.pack(anchor="w")
+
+        styled_button(form, "✎  Update Product", self._update, width=22).pack(pady=(16, 0), fill="x")
+
+    def _browse_image(self):
+        from tkinter import filedialog
+        path = filedialog.askopenfilename(
+            title="Select Product Image",
+            filetypes=[("Image files", "*.jpg *.jpeg *.png *.gif *.bmp")]
+        )
+        if not path:
+            return
+        self._image_path = path
+        self.img_name_lbl.config(text=os.path.basename(path))
+        try:
+            from PIL import Image, ImageTk
+            img = Image.open(path).resize((80, 60), Image.LANCZOS)
+            self._preview_img = ImageTk.PhotoImage(img)
+            self.preview_lbl.config(image=self._preview_img, text="")
+        except Exception:
+            self.preview_lbl.config(text="Preview\nunavailable")
 
     def _update(self):
+        import shutil
         pid      = self.e_id.get().strip()
         name     = self.e_name.get().strip()
         price    = self.e_price.get().strip()
         stock    = self.e_stock.get().strip()
-        category = self.e_category.get().strip()
+        category = self.cat_var.get()
 
         if not pid:
             messagebox.showerror("Error", "Product ID is required.")
@@ -425,7 +554,7 @@ class EditProductWindow:
             return
 
         cur_name, cur_price, cur_stock, cur_cat = result
-        name     = name     or cur_name
+        new_name = name     or cur_name
         price    = price    or cur_price
         category = category or cur_cat
 
@@ -439,9 +568,22 @@ class EditProductWindow:
         else:
             stock = cur_stock
 
+        # Handle optional image replacement
+        if self._image_path:
+            ext        = os.path.splitext(self._image_path)[1].lower()
+            filename   = new_name.lower().replace(" ", "_").replace("/", "-") + ext
+            assets_dir = os.path.join(os.path.dirname(__file__), "..", "assets", "food @chizzlin")
+            dest       = os.path.join(assets_dir, filename)
+            try:
+                shutil.copy2(self._image_path, dest)
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to save image:\n{e}")
+                conn.close()
+                return
+
         cursor.execute(
             "UPDATE products SET name=?, price=?, stock=?, category=? WHERE id=?",
-            (name, price, stock, category, pid)
+            (new_name, price, stock, category, pid)
         )
         conn.commit()
         conn.close()
