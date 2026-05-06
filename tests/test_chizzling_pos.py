@@ -1,5 +1,4 @@
-# Simplified Test for ChizzlingPOS System
-# Test Objective: Test core ChizzlingPOS functionality without complex UI mocking
+# Test for US:01 Digital Transaction Processing
 
 import pytest
 import sys

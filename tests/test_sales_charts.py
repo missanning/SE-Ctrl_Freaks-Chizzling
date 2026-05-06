@@ -1,7 +1,4 @@
 # Test for US-16: Sales Charts / Graphs
-# Test Objective: Ensure that ranking charts and time-series progression charts
-# are built correctly, period date calculations are accurate, and dual y-axes
-# with hover tooltips are present in progression charts.
 
 import pytest
 import sys
@@ -75,10 +72,10 @@ class TestRankingCharts:
             assert trace.orientation == 'h'
 
     def test_quantity_chart_marker_color(self, top_products_fig):
-        assert top_products_fig.data[0].marker.color == '#28A745'
+        assert top_products_fig.data[0].marker.color == '#7a3b10'
 
     def test_revenue_chart_marker_color(self, top_products_fig):
-        assert top_products_fig.data[1].marker.color == '#007BFF'
+        assert top_products_fig.data[1].marker.color == '#f5a623'
 
 
 # ── AC2: Time-series progression charts ──────────────────────────────────────

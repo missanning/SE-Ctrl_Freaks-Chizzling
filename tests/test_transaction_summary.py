@@ -1,7 +1,5 @@
 # Test for US-17: Transaction Summary
-# Test Objective: Ensure that transaction analytics correctly loads transactions
-# by date, calculates metrics accurately, handles empty dates, and supports
-# today's date shortcut.
+
 
 import pytest
 import sys

@@ -1,7 +1,5 @@
 # Test for US-14: Product Browsing and Selection
-# Test Objective: Ensure that products are correctly loaded and displayed with their
-# details, that search filtering works, and that product selection triggers the
-# correct behavior for adding to cart.
+
 
 import pytest
 import sys

@@ -1,6 +1,4 @@
 # Test for US-13: Database Setup and Initialization
-# Test Objective: Ensure that all necessary database tables are successfully created 
-# and that default records for users, products, ingredients, and recipes are properly inserted without errors.
 
 import pytest
 import sys
