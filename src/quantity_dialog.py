@@ -43,7 +43,22 @@ IMAGE_MAP = {
     "Gin Bilog": "ginbilog.jpg",
     "Gin Kwatro": "ginkwatro.jpg",
     "Pale Pilsen": "palepilsen.png",
-    "Chocolate Milk Tea": "chocolate.png",
+    "Chocolate Milk Tea": "Chocolate.png",
+    "Dark Chocolate Milk Tea": "Dark Chocolate.png",
+    "Taro Milk Tea": "Taro.png",
+    "Red Velvet Milk Tea": "RedVelvet.png",
+    "Brown Sugar Milk Tea": "Brown Sugar.png",
+    "Matcha Milk Tea": "Matcha.png",
+    "Wintermelon Milk Tea": "Wintermelon.png",
+    "Cookies & Cream Milk Tea": "cookies&cream.png",
+    "White Bunny Milk Tea": "White bunny.png",
+    "Mango Cheesecake Milk Tea": "Mangocheesecake.png",
+    "Blue Lemonade Fruit Tea": "Blue lemonade .png",
+    "Blueberry Fruit Tea": "Blueberry.png",
+    "Strawberry Fruit Tea": "Strawberry M.png",
+    "Green Apple Fruit Tea": "Green Apple.png",
+    "Four Seasons Fruit Tea": "Four Seasons.png",
+    "Lychee Fruit Tea": "Lychee.png"
 }
 ASSETS_DIR = os.path.join(os.path.dirname(__file__), "..", "assets", "food @chizzlin")
 

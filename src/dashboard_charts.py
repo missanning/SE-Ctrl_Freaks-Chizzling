@@ -77,53 +77,90 @@ def build_top_products_figure(products, quantities, sales, title, screen_width):
 
 def open_revenue_chart(results, title, screen_width):
     top = results[:10]
-    products = [r[0] for r in top]
-    revenues = [r[3] for r in top]
-    quantities = [r[2] for r in top]
-    prices = [r[1] for r in top]
+    # Truncate long names for display
+    def _short(name, n=14): return name[:n] + '…' if len(name) > n else name
 
-    qty_sorted = sorted(zip(products, quantities), key=lambda x: x[1], reverse=True)
-    qty_products = [i[0] for i in qty_sorted]
-    qty_values = [i[1] for i in qty_sorted]
+    products      = [_short(r[0]) for r in top]
+    full_names    = [r[0] for r in top]
+    revenues      = [r[3] for r in top]
+    quantities    = [r[2] for r in top]
+    prices        = [r[1] for r in top]
+
+    qty_sorted    = sorted(zip(products, quantities, full_names), key=lambda x: x[1], reverse=True)
+    qty_products  = [i[0] for i in qty_sorted]
+    qty_values    = [i[1] for i in qty_sorted]
+    qty_fullnames = [i[2] for i in qty_sorted]
 
     fig = make_subplots(
         rows=2, cols=2,
         subplot_titles=('Top Products by Revenue', 'Top Products by Quantity Sold',
-                        'Price vs Revenue Analysis', 'Revenue Distribution'),
+                        'Price vs Revenue', 'Revenue Distribution'),
         specs=[[{"type": "bar"}, {"type": "bar"}],
-               [{"type": "scatter"}, {"type": "pie"}]]
+               [{"type": "scatter"}, {"type": "pie"}]],
+        vertical_spacing=0.18,
+        horizontal_spacing=0.12,
     )
-    fig.add_trace(go.Bar(x=products, y=revenues, name='Total Revenue',
-                         marker_color='#7a3b10',
-                         text=[f'₱{r:.0f}' for r in revenues],
-                         textposition='outside'), row=1, col=1)
-    fig.add_trace(go.Bar(x=qty_products, y=qty_values, name='Quantity Sold',
-                         marker_color='#f5a623',
-                         text=[f'{int(q)}' for q in qty_values],
-                         textposition='outside'), row=1, col=2)
-    fig.add_trace(go.Scatter(x=prices, y=revenues, mode='markers+text',
-                             name='Price vs Revenue',
-                             marker=dict(size=10, color='#ffd966'),
-                             text=[p[:10] + '...' if len(p) > 10 else p for p in products],
-                             textposition='top center'), row=2, col=1)
+
+    # Bar — Revenue (horizontal so labels never overlap x-axis)
+    fig.add_trace(go.Bar(
+        y=products, x=revenues, orientation='h', name='Total Revenue',
+        marker_color='#7a3b10',
+        text=[f'₱{r:,.0f}' for r in revenues],
+        textposition='inside', insidetextanchor='end',
+        textfont=dict(color='#fff3e0', size=11),
+        customdata=full_names,
+        hovertemplate='<b>%{customdata}</b><br>Revenue: ₱%{x:,.2f}<extra></extra>'
+    ), row=1, col=1)
+
+    # Bar — Quantity (horizontal)
+    fig.add_trace(go.Bar(
+        y=qty_products, x=qty_values, orientation='h', name='Quantity Sold',
+        marker_color='#f5a623',
+        text=[f'{int(q)}' for q in qty_values],
+        textposition='inside', insidetextanchor='end',
+        textfont=dict(color='#3b1f0a', size=11),
+        customdata=qty_fullnames,
+        hovertemplate='<b>%{customdata}</b><br>Qty: %{x}<extra></extra>'
+    ), row=1, col=2)
+
+    # Scatter — Price vs Revenue (no text labels, tooltip only)
+    fig.add_trace(go.Scatter(
+        x=prices, y=revenues, mode='markers',
+        name='Price vs Revenue',
+        marker=dict(size=12, color='#ffd966', line=dict(color='#7a3b10', width=1)),
+        customdata=full_names,
+        hovertemplate='<b>%{customdata}</b><br>Price: ₱%{x:,.2f}<br>Revenue: ₱%{y:,.2f}<extra></extra>'
+    ), row=2, col=1)
+
+    # Pie — Revenue share
     fig.add_trace(go.Pie(
-        labels=[p[:15] + '...' if len(p) > 15 else p for p in products],
-        values=revenues, name="Revenue Share"), row=2, col=2)
+        labels=products, values=revenues,
+        customdata=full_names,
+        name='Revenue Share',
+        textinfo='percent',
+        hovertemplate='<b>%{customdata}</b><br>₱%{value:,.2f} (%{percent})<extra></extra>',
+        hole=0.3,
+        marker=dict(colors=['#7a3b10','#f5a623','#ffd966','#9b5b30','#c0a080',
+                             '#e8c87a','#5a2b00','#d4a050','#b07030','#8b5020'])
+    ), row=2, col=2)
 
     fig.update_layout(
-        title={'text': f'<b>Revenue Analysis - {title}</b>', 'x': 0.5,
+        title={'text': f'<b>Revenue Analysis — {title}</b>', 'x': 0.5,
                'xanchor': 'center', 'font': {'size': 20, 'color': '#333'}},
-        showlegend=False, height=800,
+        showlegend=False,
+        height=860,
         width=min(int(screen_width * 0.9), 1600),
         plot_bgcolor='#FFF8EE', paper_bgcolor='#FFF8EE',
-        font={'family': 'Segoe UI', 'size': 11}
+        font={'family': 'Segoe UI', 'size': 12},
+        margin=dict(l=20, r=40, t=100, b=40),
     )
-    fig.update_xaxes(title_text="Products", row=1, col=1, tickangle=45)
-    fig.update_yaxes(title_text="Revenue (₱)", row=1, col=1)
-    fig.update_xaxes(title_text="Products", row=1, col=2, tickangle=45)
-    fig.update_yaxes(title_text="Quantity Sold", row=1, col=2)
-    fig.update_xaxes(title_text="Unit Price (₱)", row=2, col=1)
-    fig.update_yaxes(title_text="Revenue (₱)", row=2, col=1)
+
+    fig.update_xaxes(title_text='Revenue (₱)', row=1, col=1, gridcolor='#ffd966')
+    fig.update_yaxes(automargin=True, row=1, col=1)
+    fig.update_xaxes(title_text='Quantity Sold', row=1, col=2, gridcolor='#ffd966')
+    fig.update_yaxes(automargin=True, row=1, col=2)
+    fig.update_xaxes(title_text='Unit Price (₱)', row=2, col=1, gridcolor='#ffd966')
+    fig.update_yaxes(title_text='Revenue (₱)', row=2, col=1, gridcolor='#ffd966')
 
     _open_html(fig, "Revenue Analysis", "#7a3b10")
 
