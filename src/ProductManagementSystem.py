@@ -47,22 +47,6 @@ def entry_field(parent, label_text, var=None):
     return e
 
 
-def _apply_combo_style():
-    """Apply cream background style to Combobox matching other entry fields."""
-    style = ttk.Style()
-    style.theme_use("clam")
-    style.configure("Cream.TCombobox",
-                    fieldbackground=ENTRY_BG,
-                    background=ENTRY_BG,
-                    foreground=FG,
-                    selectbackground=ENTRY_BG,
-                    selectforeground=FG,
-                    arrowcolor=BROWN)
-    style.map("Cream.TCombobox",
-              fieldbackground=[("readonly", ENTRY_BG)],
-              background=[("readonly", ENTRY_BG)])
-
-
 class ProductManagementSystem:
     def __init__(self, root):
         self.root = root
@@ -346,14 +330,12 @@ class AddProductWindow:
         cat_border = tk.Frame(form, bg=ENTRY_BORDER, padx=1, pady=1)
         cat_border.pack(fill="x", pady=(2, 0))
         self.cat_var = tk.StringVar(value=CATEGORIES[0])
-        cat_menu = tk.OptionMenu(cat_border, self.cat_var, *CATEGORIES)
-        cat_menu.config(bg=ENTRY_BG, fg=FG, activebackground=ACCENT,
-                        activeforeground=FG, font=FONT_ENTRY,
-                        relief="flat", bd=0, highlightthickness=0,
-                        anchor="w", width=30)
-        cat_menu["menu"].config(bg=ENTRY_BG, fg=FG, activebackground=ACCENT,
-                                activeforeground=FG, font=FONT_ENTRY)
-        cat_menu.pack(fill="x", padx=2, pady=2)
+        self.e_category = ttk.Combobox(cat_border, textvariable=self.cat_var,
+                                       values=CATEGORIES, state="readonly",
+                                       font=FONT_ENTRY)
+        self.e_category.pack(fill="x", ipady=5, padx=4)
+        self.e_category.bind("<FocusIn>",  lambda e: cat_border.config(bg=ACCENT))
+        self.e_category.bind("<FocusOut>", lambda e: cat_border.config(bg=ENTRY_BORDER))
 
         # Image upload
         tk.Label(form, text="Product Image  (required)", font=FONT_LABEL,
@@ -501,14 +483,12 @@ class EditProductWindow:
         cat_border = tk.Frame(form, bg=ENTRY_BORDER, padx=1, pady=1)
         cat_border.pack(fill="x", pady=(2, 0))
         self.cat_var = tk.StringVar(value="")
-        cat_menu = tk.OptionMenu(cat_border, self.cat_var, "", *CATEGORIES)
-        cat_menu.config(bg=ENTRY_BG, fg=FG, activebackground=ACCENT,
-                        activeforeground=FG, font=FONT_ENTRY,
-                        relief="flat", bd=0, highlightthickness=0,
-                        anchor="w", width=30)
-        cat_menu["menu"].config(bg=ENTRY_BG, fg=FG, activebackground=ACCENT,
-                                activeforeground=FG, font=FONT_ENTRY)
-        cat_menu.pack(fill="x", padx=2, pady=2)
+        self.e_category = ttk.Combobox(cat_border, textvariable=self.cat_var,
+                                       values=[""] + CATEGORIES, state="readonly",
+                                       font=FONT_ENTRY)
+        self.e_category.pack(fill="x", ipady=5, padx=4)
+        self.e_category.bind("<FocusIn>",  lambda e: cat_border.config(bg=ACCENT))
+        self.e_category.bind("<FocusOut>", lambda e: cat_border.config(bg=ENTRY_BORDER))
 
         # Image upload
         tk.Label(form, text="New Image  (leave blank to keep current)", font=FONT_LABEL,
