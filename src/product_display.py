@@ -1,5 +1,6 @@
 import tkinter as tk
 import os
+import threading
 from quantity_dialog import QuantityDialog
 try:
     from PIL import Image, ImageTk
@@ -71,12 +72,51 @@ IMAGE_MAP = {
 ASSETS_DIR = os.path.join(os.path.dirname(__file__), "..", "assets", "food @chizzlin")
 
 
+# Fixed card image size — pre-rendered once, no resize on Configure
+CARD_IMG_W = 160
+CARD_IMG_H = 120
+
+
 class ProductDisplay:
     def __init__(self, parent, pos_instance):
         self.parent     = parent
         self.pos        = pos_instance
         self._img_cache = {}
+        self._preload_done = False
         self.create_product_panel()
+
+    def preload_images(self, product_names):
+        """Pre-load and resize all product images in a background thread."""
+        def _load():
+            for name in product_names:
+                if not PIL_AVAILABLE:
+                    break
+                filename = IMAGE_MAP.get(name, "no image.jpg")
+                path     = os.path.join(ASSETS_DIR, filename)
+                key      = (path, CARD_IMG_W, CARD_IMG_H)
+                if key in self._img_cache:
+                    continue
+                try:
+                    pil_img = Image.open(path).convert("RGB")
+                    iw, ih  = pil_img.size
+                    scale   = max(CARD_IMG_W / iw, CARD_IMG_H / ih)
+                    nw, nh  = int(iw * scale), int(ih * scale)
+                    pil_img = pil_img.resize((nw, nh), Image.BILINEAR)
+                    left    = (nw - CARD_IMG_W) // 2
+                    top     = (nh - CARD_IMG_H) // 2
+                    pil_img = pil_img.crop((left, top,
+                                            left + CARD_IMG_W,
+                                            top  + CARD_IMG_H))
+                    # PhotoImage must be created on main thread
+                    self.parent.after(0, lambda p=pil_img, k=key: self._store_photo(p, k))
+                except Exception:
+                    self._img_cache[key] = None
+            self._preload_done = True
+        threading.Thread(target=_load, daemon=True).start()
+
+    def _store_photo(self, pil_img, key):
+        """Called on main thread to safely create PhotoImage."""
+        self._img_cache[key] = ImageTk.PhotoImage(pil_img)
 
     def create_product_panel(self):
         panel = tk.Frame(self.parent, bg=BG)
@@ -194,7 +234,6 @@ class ProductDisplay:
         self.prod_count_lbl.config(text=f"Products  ({len(products)} items)")
 
         COLS = 5
-        IMG_H = 120
 
         for idx, prod in enumerate(products):
             pid, name, price, *_ = prod
@@ -206,7 +245,7 @@ class ProductDisplay:
             self.prod_inner.grid_columnconfigure(col, weight=1, uniform="col")
 
             # Cover-fit image
-            img_frame = tk.Frame(card, bg=BG, height=IMG_H)
+            img_frame = tk.Frame(card, bg=BG, width=CARD_IMG_W, height=CARD_IMG_H)
             img_frame.pack(fill="x")
             img_frame.pack_propagate(False)
 
@@ -216,33 +255,30 @@ class ProductDisplay:
             if PIL_AVAILABLE:
                 filename = IMAGE_MAP.get(name, "no image.jpg")
                 img_path = os.path.join(ASSETS_DIR, filename)
-
-                def _resize(event, lbl=img_label, path=img_path, cache=self._img_cache):
-                    w, h = event.width, event.height
-                    if w < 2 or h < 2:
-                        return
-                    key = (path, w, h)
-                    if key not in cache:
-                        try:
-                            pil_img = Image.open(path).convert("RGB")
-                            iw, ih  = pil_img.size
-                            scale   = max(w / iw, h / ih)
-                            nw, nh  = int(iw * scale), int(ih * scale)
-                            pil_img = pil_img.resize((nw, nh), Image.LANCZOS)
-                            left    = (nw - w) // 2
-                            top     = (nh - h) // 2
-                            pil_img = pil_img.crop((left, top, left + w, top + h))
-                            cache[key] = ImageTk.PhotoImage(pil_img)
-                        except Exception:
-                            cache[key] = None
-                    photo = cache[key]
-                    if photo:
-                        lbl.config(image=photo)
-                        lbl.image = photo
-                    else:
-                        lbl.config(text="🍴", font=(FONT_FAM, 36), fg=TEXT_MUTED)
-
-                img_frame.bind("<Configure>", _resize)
+                key      = (img_path, CARD_IMG_W, CARD_IMG_H)
+                photo    = self._img_cache.get(key)
+                if photo:
+                    img_label.config(image=photo)
+                    img_label.image = photo
+                else:
+                    # Not cached yet — load inline (fallback for first render)
+                    try:
+                        pil_img = Image.open(img_path).convert("RGB")
+                        iw, ih  = pil_img.size
+                        scale   = max(CARD_IMG_W / iw, CARD_IMG_H / ih)
+                        nw, nh  = int(iw * scale), int(ih * scale)
+                        pil_img = pil_img.resize((nw, nh), Image.BILINEAR)
+                        left    = (nw - CARD_IMG_W) // 2
+                        top     = (nh - CARD_IMG_H) // 2
+                        pil_img = pil_img.crop((left, top,
+                                                left + CARD_IMG_W,
+                                                top  + CARD_IMG_H))
+                        photo   = ImageTk.PhotoImage(pil_img)
+                        self._img_cache[key] = photo
+                        img_label.config(image=photo)
+                        img_label.image = photo
+                    except Exception:
+                        img_label.config(text="🍴", font=(FONT_FAM, 36), fg=TEXT_MUTED)
             else:
                 img_label.config(text="🍴", font=(FONT_FAM, 36), fg=TEXT_MUTED)
 
