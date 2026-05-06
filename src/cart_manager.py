@@ -66,7 +66,6 @@ class CartManager:
         summary = tk.Frame(right, bg=WHITE)
         summary.pack(fill="x", **pad)
         self.lbl_subtotal = self._summary_row(summary, "Subtotal", "₱0.00")
-        self.lbl_tax      = self._summary_row(summary, "Tax (12%)", "₱0.00")
         self.lbl_disc     = self._summary_row(summary, "Discount", "-₱0.00", val_fg=GREEN)
 
         tk.Frame(right, bg=BORDER, height=1).pack(fill="x", pady=6)
@@ -196,7 +195,8 @@ class CartManager:
             info = tk.Frame(row, bg=PRIMARY_LT)
             info.pack(side="left", fill="x", expand=True, pady=4)
             tk.Label(info, text=item["name"], font=FONT_BOLD,
-                     fg=TEXT_DARK, bg=PRIMARY_LT, anchor="w").pack(fill="x")
+                     fg=TEXT_DARK, bg=PRIMARY_LT, anchor="w",
+                     wraplength=160, justify="left").pack(fill="x")
             tk.Label(info, text=f"₱{item['price']:,.2f}", font=FONT_BODY,
                      fg=TEXT_DARK, bg=PRIMARY_LT, anchor="w").pack(fill="x")
             remove = tk.Label(info, text="Remove", font=FONT_SMALL,
@@ -208,10 +208,8 @@ class CartManager:
 
     def _update_summary(self):
         subtotal = sum(i["price"] * i["qty"] for i in self.cart)
-        tax      = subtotal * 0.12
-        total    = subtotal + tax
+        total    = subtotal
         self.lbl_subtotal.config(text=f"₱{subtotal:,.2f}")
-        self.lbl_tax.config(text=f"₱{tax:,.2f}")
         self.lbl_disc.config(text="-₱0.00")
         self.lbl_total.config(text=f"₱{total:,.2f}")
         self._total = total

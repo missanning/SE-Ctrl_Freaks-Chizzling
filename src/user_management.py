@@ -15,6 +15,53 @@ ENTRY_BG = "#fff8ee"
 FONT     = "Segoe UI"
 
 
+class RoundedButton(tk.Canvas):
+    def __init__(self, parent, text, command, bg, fg, hover_bg,
+                 font=None, padx=16, pady=8, radius=14, **kwargs):
+        super().__init__(parent, bg=parent["bg"], highlightthickness=0, **kwargs)
+        self._bg       = bg
+        self._hover_bg = hover_bg
+        self._fg       = fg
+        self._text     = text
+        self._command  = command
+        self._font     = font or (FONT, 11, "bold")
+        self._padx     = padx
+        self._pady     = pady
+        self._radius   = radius
+        self._draw(bg)
+        self.bind("<Enter>",    lambda _: self._draw(self._hover_bg))
+        self.bind("<Leave>",    lambda _: self._draw(self._bg))
+        self.bind("<Button-1>", lambda _: command())
+        self.config(cursor="hand2")
+
+    def _draw(self, bg):
+        self.delete("all")
+        # measure text
+        tmp = tk.Label(self, text=self._text, font=self._font)
+        tmp.update_idletasks()
+        tw = tmp.winfo_reqwidth()
+        th = tmp.winfo_reqheight()
+        tmp.destroy()
+        w = tw + self._padx * 2
+        h = th + self._pady * 2
+        self.config(width=w, height=h)
+        r = self._radius
+        self.create_arc(0,     0,     r*2, r*2, start=90,  extent=90,  fill=bg, outline=bg)
+        self.create_arc(w-r*2, 0,     w,   r*2, start=0,   extent=90,  fill=bg, outline=bg)
+        self.create_arc(0,     h-r*2, r*2, h,   start=180, extent=90,  fill=bg, outline=bg)
+        self.create_arc(w-r*2, h-r*2, w,   h,   start=270, extent=90,  fill=bg, outline=bg)
+        self.create_rectangle(r, 0, w-r, h, fill=bg, outline=bg)
+        self.create_rectangle(0, r, w, h-r, fill=bg, outline=bg)
+        self.create_text(w//2, h//2, text=self._text, fill=self._fg,
+                         font=self._font)
+
+    def config_btn(self, text=None, bg=None, fg=None, hover_bg=None):
+        if text:     self._text     = text
+        if bg:       self._bg       = bg
+        if fg:       self._fg       = fg
+        if hover_bg: self._hover_bg = hover_bg
+        self._draw(self._bg)
+
 class UserManagement:
     def __init__(self, root, current_user_id: int = None):
         """
@@ -25,15 +72,17 @@ class UserManagement:
         self.selected_id     = None
         self._show_password  = False
         self._status_job     = None
+        self._edit_mode      = False
 
         self.root.title("User Management — Chizzling POS")
-        self.root.resizable(False, False)
+        self.root.resizable(True, True)
         self.root.configure(bg=BG)
         self.root.update_idletasks()
-        w, h = 820, 660
+        w, h = 900, 700
         x = (self.root.winfo_screenwidth()  // 2) - (w // 2)
         y = (self.root.winfo_screenheight() // 2) - (h // 2)
         self.root.geometry(f"{w}x{h}+{x}+{y}")
+        self.root.minsize(860, 660)
 
         self._build_ui()
         self.load_users()
@@ -56,23 +105,26 @@ class UserManagement:
 
         # ── Search bar ────────────────────────────────────────────────────────
         search_row = tk.Frame(body, bg=BG)
-        search_row.pack(fill="x", pady=(0, 6))
+        search_row.pack(fill="x", pady=(0, 10))
 
         tk.Label(search_row, text="Registered Users",
                  font=(FONT, 13, "bold"), bg=BG, fg=SIDEBAR
                  ).pack(side="left")
 
-        tk.Label(search_row, text="🔍", font=(FONT, 11),
-                 bg=BG, fg=FG_DARK).pack(side="right", padx=(0, 4))
+        # Minimal search container
+        search_pill = tk.Frame(search_row, bg=CONTENT, highlightbackground="#ddd", highlightthickness=1)
+        search_pill.pack(side="right")
+
+        tk.Label(search_pill, text="🔍", font=(FONT, 10), bg=CONTENT, fg="#999"
+                 ).pack(side="left", padx=(8, 4), pady=6)
 
         self.search_var = tk.StringVar()
         self.search_var.trace_add("write", lambda *_: self.load_users())
         tk.Entry(
-            search_row, textvariable=self.search_var,
-            font=(FONT, 11), bg=ENTRY_BG, fg=FG_DARK,
-            relief="flat", highlightbackground=ACCENT,
-            highlightthickness=1, width=22,
-        ).pack(side="right", ipady=5)
+            search_pill, textvariable=self.search_var,
+            font=(FONT, 10), bg=CONTENT, fg=FG_DARK,
+            relief="flat", bd=0, width=20, insertbackground=SIDEBAR,
+        ).pack(side="left", ipady=4, padx=(0, 8))
 
         # ── Treeview ──────────────────────────────────────────────────────────
         style = ttk.Style()
@@ -83,6 +135,9 @@ class UserManagement:
         style.configure("UM.Treeview.Heading",
                         background=SIDEBAR, foreground=FG_LIGHT,
                         font=(FONT, 11, "bold"), relief="flat")
+        style.map("UM.Treeview.Heading",
+                  background=[("active", SIDEBAR), ("pressed", SIDEBAR)],
+                  foreground=[("active", FG_LIGHT), ("pressed", FG_LIGHT)])
         style.map("UM.Treeview",
                   background=[("selected", ACCENT)],
                   foreground=[("selected", FG_DARK)])
@@ -92,9 +147,9 @@ class UserManagement:
 
         cols = ("ID", "Username", "Role")
         self.tree = ttk.Treeview(tree_frame, columns=cols, show="headings",
-                                 style="UM.Treeview", height=10)
-        for col, w in (("ID", 60), ("Username", 320), ("Role", 200)):
-            self.tree.heading(col, text=col)
+                                 style="UM.Treeview", height=9)
+        for col, w in (("ID", 80), ("Username", 400), ("Role", 200)):
+            self.tree.heading(col, text=col, command=lambda: None)
             self.tree.column(col, width=w, anchor="center" if col == "ID" else "w")
         self.tree.tag_configure("odd",  background=CONTENT)
         self.tree.tag_configure("even", background=ROW_ALT)
@@ -106,70 +161,106 @@ class UserManagement:
         sb.pack(side="right", fill="y")
         self.tree.pack(side="left", fill="both", expand=True)
 
-        tk.Frame(body, bg=ACCENT, height=2).pack(fill="x", pady=(12, 16))
+        tk.Frame(body, bg=ACCENT, height=2).pack(fill="x", pady=(10, 12))
 
         # ── Form ──────────────────────────────────────────────────────────────
-        tk.Label(body, text="User Details", font=(FONT, 13, "bold"),
-                 bg=BG, fg=SIDEBAR).pack(anchor="w", pady=(0, 10))
-
-        form = tk.Frame(body, bg=BG)
-        form.pack(fill="x")
-
-        tk.Label(form, text="Username", font=(FONT, 11, "bold"),
-                 bg=BG, fg=FG_DARK).grid(row=0, column=0, sticky="w", padx=(0, 10), pady=4)
-        self.entry_username = tk.Entry(
-            form, font=(FONT, 11), bg=ENTRY_BG, fg=FG_DARK,
-            relief="flat", highlightbackground=ACCENT,
-            highlightthickness=1, width=24,
+        details_row = tk.Frame(body, bg=BG)
+        details_row.pack(fill="x", pady=(0, 6))
+        tk.Label(details_row, text="User Details", font=(FONT, 12, "bold"),
+                 bg=BG, fg=SIDEBAR).pack(side="left")
+        self.edit_toggle_btn = RoundedButton(
+            details_row, text="✏️ Edit", command=self._toggle_edit_mode,
+            bg=ACCENT, fg=FG_DARK, hover_bg=YELLOW, padx=10, pady=3,
+            font=(FONT, 10, "bold")
         )
-        self.entry_username.grid(row=0, column=1, sticky="w", padx=(0, 24), pady=4, ipady=6)
+        self.edit_toggle_btn.pack(side="left", padx=(10, 0))
 
-        tk.Label(form, text="Password", font=(FONT, 11, "bold"),
-                 bg=BG, fg=FG_DARK).grid(row=0, column=2, sticky="w", padx=(0, 10), pady=4)
-        pw_frame = tk.Frame(form, bg=ENTRY_BG,
+        # Form card
+        self.form_card = tk.Frame(body, bg=CONTENT,
+                                  highlightbackground="#e0d0c0", highlightthickness=1)
+
+        self.form = tk.Frame(self.form_card, bg=CONTENT)
+        self.form.pack(fill="x", padx=16, pady=10)
+
+        # Row 0 — Username & Password
+        self.lbl_username = tk.Label(self.form, text="Username", font=(FONT, 10, "bold"),
+                                     bg=CONTENT, fg=FG_DARK)
+        self.entry_username = tk.Entry(
+            self.form, font=(FONT, 11), bg=ENTRY_BG, fg=FG_DARK,
+            relief="flat", highlightbackground=ACCENT, highlightthickness=1, width=22,
+        )
+        self.lbl_password = tk.Label(self.form, text="Password", font=(FONT, 10, "bold"),
+                                     bg=CONTENT, fg=FG_DARK)
+        pw_frame = tk.Frame(self.form, bg=ENTRY_BG,
                             highlightbackground=ACCENT, highlightthickness=1)
-        pw_frame.grid(row=0, column=3, sticky="w", padx=(0, 24), pady=4)
         self.entry_password = tk.Entry(
             pw_frame, font=(FONT, 11), bg=ENTRY_BG,
-            fg=FG_DARK, relief="flat", show="*", width=20,
+            fg=FG_DARK, relief="flat", show="*", width=18,
         )
-        self.entry_password.pack(side="left", ipady=6, padx=(4, 0))
+        self.entry_password.pack(side="left", ipady=5, padx=(6, 0))
         tk.Button(pw_frame, text="👁", font=(FONT, 10), bg=ENTRY_BG, fg=FG_DARK,
                   relief="flat", bd=0, cursor="hand2",
-                  command=self._toggle_password).pack(side="left", padx=4)
+                  activebackground=ENTRY_BG, activeforeground=FG_DARK,
+                  command=self._toggle_password).pack(side="left", padx=(2, 6))
+        self.pw_frame = pw_frame
 
-        tk.Label(form, text="Role", font=(FONT, 11, "bold"),
-                 bg=BG, fg=FG_DARK).grid(row=0, column=4, sticky="w", padx=(0, 10), pady=4)
+        # Row 1 — Role
+        self.lbl_role = tk.Label(self.form, text="Role", font=(FONT, 10, "bold"),
+                                 bg=CONTENT, fg=FG_DARK)
         self.role_var = tk.StringVar(value=ROLES[0])
-        ttk.Combobox(form, textvariable=self.role_var, values=ROLES,
-                     width=16, state="readonly", font=(FONT, 11)
-                     ).grid(row=0, column=5, sticky="w", pady=4, ipady=4)
+        self.combo_role = ttk.Combobox(self.form, textvariable=self.role_var, values=ROLES,
+                                       width=20, state="readonly", font=(FONT, 11))
+
+        self._set_form_visibility(False)
 
         # Status label
         self.status_label = tk.Label(body, text="", font=(FONT, 10), bg=BG, fg=SIDEBAR)
-        self.status_label.pack(anchor="w", pady=(8, 0))
+        self.status_label.pack(anchor="w", pady=(4, 0))
 
         # Action buttons
         btn_frame = tk.Frame(body, bg=BG)
-        btn_frame.pack(anchor="w", pady=(10, 0))
+        btn_frame.pack(anchor="w", pady=(8, 0))
 
-        for text, cmd, bg, fg in [
-            ("➕  Add User",    self._add_user,    SIDEBAR,   FG_LIGHT),
-            ("✏️  Update User", self._update_user, ACCENT,    FG_DARK),
-            ("🗑  Delete User", self._delete_user, "#8b0000", FG_LIGHT),
-            ("✕  Clear",       self._clear_form,  "#c0a080", FG_DARK),
+        for text, cmd, bg, fg, hover in [
+            ("➕  Add User",    self._add_user,    SIDEBAR,   FG_LIGHT, "#9b5b30"),
+            ("✏️  Update User", self._update_user, ACCENT,    FG_DARK,  YELLOW),
+            ("🗑  Delete User", self._delete_user, "#8b0000", FG_LIGHT, "#a00000"),
+            ("✕  Clear",       self._clear_form,  "#c0a080", FG_DARK,  "#d4b896"),
         ]:
-            tk.Button(btn_frame, text=text, command=cmd,
-                      font=(FONT, 11, "bold"), bg=bg, fg=fg,
-                      relief="flat", padx=16, pady=8,
-                      activebackground=YELLOW, activeforeground=FG_DARK,
-                      cursor="hand2").pack(side="left", padx=(0, 8))
+            RoundedButton(btn_frame, text=text, command=cmd,
+                          bg=bg, fg=fg, hover_bg=hover,
+                          font=(FONT, 10, "bold"), padx=14, pady=7
+                          ).pack(side="left", padx=(0, 8))
 
         # Bottom strip
         tk.Frame(self.root, bg=ACCENT, height=3).pack(fill="x", side="bottom")
         tk.Frame(self.root, bg=SIDEBAR, height=8).pack(fill="x", side="bottom")
 
     # ── Helpers ───────────────────────────────────────────────────────────────
+
+    def _set_form_visibility(self, visible: bool):
+        if visible:
+            self.form_card.pack(fill="x", pady=(0, 4))
+            self.lbl_username.grid(row=0, column=0, sticky="w", padx=(0, 8),  pady=(0, 6))
+            self.entry_username.grid(row=1, column=0, sticky="ew", padx=(0, 20), pady=(0, 8), ipady=5)
+            self.lbl_password.grid(row=0, column=1, sticky="w", padx=(0, 8),  pady=(0, 6))
+            self.pw_frame.grid(row=1, column=1, sticky="ew", padx=(0, 20), pady=(0, 8))
+            self.lbl_role.grid(row=0, column=2, sticky="w", padx=(0, 8),  pady=(0, 6))
+            self.combo_role.grid(row=1, column=2, sticky="w", pady=(0, 8), ipady=4)
+        else:
+            for w in (self.lbl_username, self.entry_username,
+                      self.lbl_password, self.pw_frame,
+                      self.lbl_role, self.combo_role):
+                w.grid_remove()
+            self.form_card.pack_forget()
+
+    def _toggle_edit_mode(self):
+        self._edit_mode = not self._edit_mode
+        self._set_form_visibility(self._edit_mode)
+        if self._edit_mode:
+            self.edit_toggle_btn.config_btn(text="✕ Close", bg="#8b0000", fg=FG_LIGHT, hover_bg="#a00000")
+        else:
+            self.edit_toggle_btn.config_btn(text="✏️ Edit", bg=ACCENT, fg=FG_DARK, hover_bg=YELLOW)
 
     def _toggle_password(self):
         self._show_password = not self._show_password
@@ -342,6 +433,10 @@ class UserManagement:
         self.role_var.set(ROLES[0])
         self.tree.selection_remove(self.tree.selection())
         self._set_status("", auto_clear=False)
+        if self._edit_mode:
+            self._edit_mode = False
+            self._set_form_visibility(False)
+            self.edit_toggle_btn.config_btn(text="✏️ Edit", bg=ACCENT, fg=FG_DARK, hover_bg=YELLOW)
 
 
 if __name__ == "__main__":
