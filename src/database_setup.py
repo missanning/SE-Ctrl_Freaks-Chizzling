@@ -28,7 +28,8 @@ def create_tables():
         name TEXT UNIQUE,
         price REAL,
         stock INTEGER,
-        category TEXT
+        category TEXT,
+        low_stock_threshold INTEGER DEFAULT 30
     )
     """)
 
@@ -42,6 +43,9 @@ def create_tables():
 
     if "stock" not in columns:
         cursor.execute("ALTER TABLE products ADD COLUMN stock INTEGER DEFAULT 0")
+    
+    if "low_stock_threshold" not in columns:
+        cursor.execute("ALTER TABLE products ADD COLUMN low_stock_threshold INTEGER DEFAULT 30")
 
     # PRODUCT ARCHIVE TABLE
     cursor.execute("""
@@ -119,9 +123,16 @@ def create_tables():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT UNIQUE,
         stock REAL,
-        unit TEXT
+        unit TEXT,
+        low_stock_threshold REAL DEFAULT 0
     )
     """)
+    
+    # Add threshold column if missing
+    cursor.execute("PRAGMA table_info(ingredients)")
+    ing_columns = [row[1] for row in cursor.fetchall()]
+    if "low_stock_threshold" not in ing_columns:
+        cursor.execute("ALTER TABLE ingredients ADD COLUMN low_stock_threshold REAL DEFAULT 0")
 
     # RECIPE TABLE (ingredient usage per product)
     cursor.execute("""

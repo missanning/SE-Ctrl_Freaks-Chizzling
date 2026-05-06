@@ -3,188 +3,207 @@ from tkinter import ttk
 from tkinter import messagebox
 from database_setup import connect_db
 
+# ── Color palette (matches ProductManagementSystem) ──────────────────────────
+BG         = "#ffffff"
+ACCENT     = "#f5a623"
+YELLOW     = "#ffd966"
+BROWN      = "#7a3b10"
+FG         = "#3b1f0a"
+SUBTLE     = "#7a3b10"
+ENTRY_BG   = "#fff8ee"
+ENTRY_BORDER = "#f5a623"
+
+FONT_TITLE  = ("Segoe UI", 13, "bold")
+FONT_LABEL  = ("Segoe UI", 10, "bold")
+FONT_ENTRY  = ("Segoe UI", 10)
+FONT_BTN    = ("Segoe UI", 10, "bold")
+FONT_SMALL  = ("Segoe UI", 9)
+
+def styled_button(parent, text, command, bg=BROWN, fg=YELLOW, width=20):
+    return tk.Button(
+        parent, text=text, command=command,
+        bg=bg, fg=fg, activebackground=ACCENT, activeforeground=BROWN,
+        font=FONT_BTN, relief="flat", bd=0, padx=10, pady=6,
+        cursor="hand2", width=width
+    )
+
 class ArchiveFeature:
     def __init__(self, root):
         self.root = root
-        self.root.title("Archive Feature")
-        self.root.geometry("1000x600")
+        self.root.title("Chizzling — Archive")
+        self.root.configure(bg=BG)
+        
+        # Center window
+        w, h = 1000, 600
+        x = (root.winfo_screenwidth() // 2) - (w // 2)
+        y = (root.winfo_screenheight() // 2) - (h // 2)
+        self.root.geometry(f"{w}x{h}+{x}+{y}")
+        self.root.resizable(False, False)
 
-        # TITLE
-        tk.Label(root, text="Archive Table", font=("Arial", 14, "bold")).pack(pady=10)
+        # Top banner
+        banner = tk.Frame(self.root, bg=BROWN, height=42)
+        banner.pack(fill="x", side="top")
+        banner.pack_propagate(False)
 
-        # MAIN FRAME
-        main_frame = tk.Frame(root)
-        main_frame.pack(fill="both", expand=True)
+        tk.Label(banner, text="Chizzling POS  ·  Product Archive",
+                 font=FONT_TITLE, bg=BROWN, fg=YELLOW).pack(side="left", padx=16, pady=8)
 
-        # LEFT FRAME (TABLE)
-        left_frame = tk.Frame(main_frame)
-        left_frame.grid(row=0, column=0, sticky="nsew")
+        tk.Frame(self.root, bg=ACCENT, height=4).pack(fill="x")
+        tk.Frame(self.root, bg=YELLOW, height=4).pack(fill="x")
 
-        # RIGHT FRAME (CONTROLS)
-        right_frame = tk.Frame(main_frame)
-        right_frame.grid(row=0, column=1, sticky="ns", padx=10)
+        # Body
+        body = tk.Frame(self.root, bg=BG)
+        body.pack(fill="both", expand=True, padx=20, pady=16)
 
-        # GRID CONFIG
-        main_frame.grid_columnconfigure(0, weight=3)
-        main_frame.grid_columnconfigure(1, weight=1)
-        main_frame.grid_rowconfigure(0, weight=1)
+        # Right — controls (pack first to maintain position)
+        right = tk.Frame(body, bg=BG, width=220)
+        right.pack(side="right", fill="y", padx=(16, 0))
+        right.pack_propagate(False)
+        self._build_controls(right)
 
-        # =======================
-        # TABLE (LEFT)
-        # =======================
-        self.tree = ttk.Treeview(left_frame)
-        self.tree.pack(fill="both", expand=True)
+        # Left — table
+        left = tk.Frame(body, bg=BG)
+        left.pack(side="left", fill="both", expand=True)
+        self._build_table(left)
+
+        # Bottom strip
+        tk.Frame(self.root, bg=YELLOW, height=4).pack(fill="x", side="bottom")
+        tk.Frame(self.root, bg=ACCENT, height=4).pack(fill="x", side="bottom")
+        tk.Frame(self.root, bg=BROWN, height=8).pack(fill="x", side="bottom")
+
+    def _build_table(self, parent):
+        # Search bar row
+        search_row = tk.Frame(parent, bg=BG)
+        search_row.pack(fill="x", pady=(0, 10))
+
+        tk.Label(search_row, text="Search:", font=FONT_LABEL,
+                 bg=BG, fg=BROWN).pack(side="left", padx=(0, 6))
+
+        search_border = tk.Frame(search_row, bg=ENTRY_BORDER, padx=1, pady=1)
+        search_border.pack(side="left", fill="x", expand=True)
+
+        self.search_entry = tk.Entry(search_border, font=FONT_ENTRY, bg=ENTRY_BG, fg=FG,
+                                     relief="flat", bd=0)
+        self.search_entry.pack(fill="x", ipady=6, padx=4)
+        self.search_entry.bind("<FocusIn>",  lambda e: search_border.config(bg=ACCENT))
+        self.search_entry.bind("<FocusOut>", lambda e: search_border.config(bg=ENTRY_BORDER))
+
+        styled_button(search_row, "🔍  Search", self.search_product,
+                      width=12).pack(side="right", padx=(8, 0))
+
+        # Treeview
+        style = ttk.Style()
+        style.theme_use("clam")
+        style.configure("Archive.Treeview",
+                        background=ENTRY_BG, fieldbackground=ENTRY_BG,
+                        foreground=FG, font=FONT_ENTRY, rowheight=28)
+        style.configure("Archive.Treeview.Heading",
+                        background=BROWN, foreground=YELLOW,
+                        font=FONT_LABEL, relief="flat")
+        style.map("Archive.Treeview",
+                  background=[("selected", ACCENT)],
+                  foreground=[("selected", BROWN)])
+
+        tree_frame = tk.Frame(parent, bg=BROWN, padx=1, pady=1)
+        tree_frame.pack(fill="both", expand=True)
+
+        self.tree = ttk.Treeview(tree_frame, style="Archive.Treeview",
+                                 selectmode="browse")
+        vsb = ttk.Scrollbar(tree_frame, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscrollcommand=vsb.set)
+        self.tree.pack(side="left", fill="both", expand=True)
+        vsb.pack(side="right", fill="y")
 
         self.load_products()
 
-        # =======================
-        # RIGHT SIDE CONTROLS
-        # =======================
+    def _build_controls(self, parent):
+        tk.Label(parent, text="Actions", font=FONT_TITLE,
+                 bg=BG, fg=BROWN).pack(anchor="w", pady=(0, 4))
+        tk.Frame(parent, bg=YELLOW, height=3).pack(fill="x", pady=(0, 12))
 
-        # RELOAD
-        tk.Button(right_frame, text="Reload", width=22,
-                  command=self.load_products).pack(pady=5)
+        styled_button(parent, "↺  Reload",
+                      self.load_products).pack(fill="x", pady=4)
 
-        # SEARCH
-        tk.Label(right_frame, text="Search Product").pack(pady=5)
+        tk.Frame(parent, bg=YELLOW, height=2).pack(fill="x", pady=10)
 
-        self.search_entry = tk.Entry(right_frame, width=25)
-        self.search_entry.pack(pady=5)
+        tk.Label(parent, text="Unarchive by ID or Name",
+                 font=FONT_SMALL, bg=BG, fg=SUBTLE).pack(anchor="w")
 
-        tk.Button(right_frame, text="Search", width=22,
-                  command=self.search_product).pack(pady=5)
+        unarchive_border = tk.Frame(parent, bg=ENTRY_BORDER, padx=1, pady=1)
+        unarchive_border.pack(fill="x", pady=(2, 6))
+        self.unarchive_entry = tk.Entry(unarchive_border, font=FONT_ENTRY,
+                                        bg=ENTRY_BG, fg=FG, relief="flat", bd=0)
+        self.unarchive_entry.pack(fill="x", ipady=6, padx=4)
+        self.unarchive_entry.bind("<FocusIn>",  lambda e: unarchive_border.config(bg=ACCENT))
+        self.unarchive_entry.bind("<FocusOut>", lambda e: unarchive_border.config(bg=ENTRY_BORDER))
 
-        # UNARCHIVE
-        tk.Label(right_frame, text="Unarchive Product").pack(pady=10)
-
-        self.unarchive_entry = tk.Entry(right_frame, width=25)
-        self.unarchive_entry.pack(pady=5)
-
-        tk.Button(right_frame, text="Unarchive", width=22,
-                  command=self.unarchive_products).pack(pady=5)
-
-        # EDIT (still empty function)
-        tk.Button(right_frame, text="Edit", width=22).pack(pady=10)
-
-    # =======================
-    # FUNCTIONS (UNCHANGED)
-    # =======================
+        styled_button(parent, "📤  Unarchive Product",
+                      self.unarchive_products,
+                      bg=ACCENT, fg=BROWN).pack(fill="x", pady=4)
 
     def load_products(self):
         conn = connect_db()
         cursor = conn.cursor()
-
         cursor.execute("SELECT * FROM product_archive")
         rows = cursor.fetchall()
+        col_names = [desc[0] for desc in cursor.description]
+        conn.close()
 
         self.tree.delete(*self.tree.get_children())
-
-        column_names = [desc[0] for desc in cursor.description]
-
-        self.tree["columns"] = column_names
-        self.tree["show"] = "headings"
-
-        for col in column_names:
-            self.tree.heading(col, text=col)
-            self.tree.column(col, width=120)
+        
+        if not self.tree["columns"]:
+            self.tree["columns"] = col_names
+            self.tree["show"] = "headings"
+            for col in col_names:
+                self.tree.heading(col, text=col.capitalize())
+                self.tree.column(col, width=120, anchor="center", minwidth=120)
 
         for row in rows:
             self.tree.insert("", tk.END, values=row)
-
-        conn.close()
 
     def search_product(self):
         keyword = self.search_entry.get()
-
         conn = connect_db()
         cursor = conn.cursor()
-
         cursor.execute("""
-        SELECT * FROM product_archive
-        WHERE id LIKE ? OR name LIKE ?
-        """, ('%' + keyword + '%', '%' + keyword + '%'))
-
+            SELECT * FROM product_archive
+            WHERE id LIKE ? OR name LIKE ?
+        """, (f'%{keyword}%', f'%{keyword}%'))
         rows = cursor.fetchall()
+        conn.close()
 
         self.tree.delete(*self.tree.get_children())
-
         for row in rows:
             self.tree.insert("", tk.END, values=row)
 
-        conn.close()
-
-    def delete_product(self):
-        keyword = self.delete_entry.get()
-
-        if keyword == "":
-            messagebox.showwarning("Warning", "Enter Product ID or Name")
-            return
-        
-        conn = connect_db()
-        cursor = conn.cursor()
-
-        cursor.execute("SELECT * FROM product_archive WHERE id=? OR name=?", (keyword, keyword))
-        result = cursor.fetchone()
-
-        if not result:
-            messagebox.showerror("Error", "Product not found")
-            conn.close()
-            return
-        
-        confirm = messagebox.askyesno("Confirm", "Delete permanently?")
-        if not confirm:
-            conn.close()
-            return
-        
-        cursor.execute("DELETE FROM product_archive WHERE id=? OR name=?", (keyword, keyword))
-
-        conn.commit()
-        conn.close()
-
-        self.delete_entry.delete(0, tk.END)
-        messagebox.showinfo("Success", "Deleted permanently")
-        self.load_products()
-
     def unarchive_products(self):
-        keyword = self.unarchive_entry.get()
-
-        if keyword == "":
-            messagebox.showwarning("Warning", "Enter Product ID or Name")
+        keyword = self.unarchive_entry.get().strip()
+        if not keyword:
+            messagebox.showwarning("Unarchive", "Enter a product ID or name.")
             return
-        
+
         conn = connect_db()
         cursor = conn.cursor()
-
         cursor.execute("SELECT * FROM product_archive WHERE id=? OR name=?", (keyword, keyword))
         result = cursor.fetchone()
 
         if not result:
-            messagebox.showerror("Error", "Product not found")
+            messagebox.showerror("Not Found", "Product not found in archive.")
             conn.close()
             return
-        
-        confirm = messagebox.askyesno("Confirm", "Unarchive this product?")
-        if not confirm:
+
+        if not messagebox.askyesno("Confirm Unarchive", f"Unarchive '{result[1]}'?"):
             conn.close()
             return
-        
+
         cursor.execute("""
-        INSERT INTO products (name, price, stock)
-        SELECT name, price, stock FROM product_archive WHERE id=? OR name=?
+            INSERT INTO products (name, price, stock, category)
+            SELECT name, price, stock, category FROM product_archive WHERE id=? OR name=?
         """, (keyword, keyword))
-
         cursor.execute("DELETE FROM product_archive WHERE id=? OR name=?", (keyword, keyword))
-
         conn.commit()
         conn.close()
 
         self.unarchive_entry.delete(0, tk.END)
-        messagebox.showinfo("Success", "Unarchived")
+        messagebox.showinfo("Unarchived", "Product unarchived successfully.")
         self.load_products()
-
-
-# RUN
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = ArchiveFeature(root)
-    root.mainloop()
