@@ -54,6 +54,8 @@ class ProductManagementSystem:
         self.root.state("zoomed")
         self.root.configure(bg=BG)
         self.stocks = 30
+        self.archive_window = None
+        self.ingredients_window = None
 
         self._build_ui()
         self.load_products()
@@ -207,7 +209,8 @@ class ProductManagementSystem:
         low_items = []
         for row in rows:
             stock = row[3]
-            if stock <= self.stocks:
+            threshold = row[5] if len(row) > 5 else 30
+            if stock <= threshold:
                 self.tree.insert("", tk.END, values=row, tags=("low",))
                 low_items.append(row[1])
             else:
@@ -275,10 +278,29 @@ class ProductManagementSystem:
         EditProductWindow(tk.Toplevel(self.root), self)
 
     def OpenIngredientsTableWindow(self):
-        IngredientsTableWindow(tk.Toplevel(self.root))
+        if self.ingredients_window and tk.Toplevel.winfo_exists(self.ingredients_window):
+            self.ingredients_window.focus_force()
+            return
+        toplevel = tk.Toplevel(self.root)
+        self.ingredients_window = toplevel
+        IngredientsTableWindow(toplevel)
+        toplevel.protocol("WM_DELETE_WINDOW", lambda: self._close_window(toplevel, 'ingredients'))
 
     def OpenArchiveFeature(self):
-        ArchiveFeature(tk.Toplevel(self.root))
+        if self.archive_window and tk.Toplevel.winfo_exists(self.archive_window):
+            self.archive_window.focus_force()
+            return
+        toplevel = tk.Toplevel(self.root)
+        self.archive_window = toplevel
+        ArchiveFeature(toplevel)
+        toplevel.protocol("WM_DELETE_WINDOW", lambda: self._close_window(toplevel, 'archive'))
+
+    def _close_window(self, window, window_type):
+        if window_type == 'archive':
+            self.archive_window = None
+        elif window_type == 'ingredients':
+            self.ingredients_window = None
+        window.destroy()
 
     def _logout(self):
         from LoginPage import MainApp
@@ -299,15 +321,15 @@ class AddProductWindow:
         self.root.configure(bg=BG)
         self.root.grab_set()
         self.root.after(100, self.root.focus_force)
-        self._image_path = None  # selected source image path
+        self._image_path = None
         self._preview_img = None
+        self.ingredients_list = []
 
-        w, h = 420, 580
+        w, h = 420, 650
         x = (root.winfo_screenwidth() // 2) - (w // 2)
         y = (root.winfo_screenheight() // 2) - (h // 2)
         self.root.geometry(f"{w}x{h}+{x}+{y}")
 
-        # Banner
         banner = tk.Frame(root, bg=BROWN, height=38)
         banner.pack(fill="x")
         banner.pack_propagate(False)
@@ -320,34 +342,31 @@ class AddProductWindow:
         form = tk.Frame(root, bg=BG, padx=30, pady=16)
         form.pack(fill="both", expand=True)
 
-        self.e_name     = entry_field(form, "Product Name")
-        self.e_price    = entry_field(form, "Price (₱)")
-        self.e_stock    = entry_field(form, "Stock")
+        self.e_name = entry_field(form, "Product Name")
+        self.e_price = entry_field(form, "Price (₱)")
+        self.e_stock = entry_field(form, "Stock")
+        self.e_threshold = entry_field(form, "Low Stock Threshold (default: 30)")
 
-        # Category dropdown
         tk.Label(form, text="Category", font=FONT_LABEL,
                  bg=BG, fg=BROWN, anchor="w").pack(fill="x", pady=(8, 0))
         cat_border = tk.Frame(form, bg=ENTRY_BORDER, padx=1, pady=1)
         cat_border.pack(fill="x", pady=(2, 0))
-        self.cat_var = tk.StringVar(value=CATEGORIES[0])
+        self.cat_var = tk.StringVar(value="")
         self.e_category = ttk.Combobox(cat_border, textvariable=self.cat_var,
-                                       values=CATEGORIES, state="readonly",
-                                       font=FONT_ENTRY)
+                                       values=CATEGORIES, state="readonly", font=FONT_ENTRY)
         self.e_category.pack(fill="x", ipady=5, padx=4)
-        self.e_category.bind("<FocusIn>",  lambda e: cat_border.config(bg=ACCENT))
+        self.e_category.bind("<FocusIn>", lambda e: cat_border.config(bg=ACCENT))
         self.e_category.bind("<FocusOut>", lambda e: cat_border.config(bg=ENTRY_BORDER))
+        self.e_category.bind("<<ComboboxSelected>>", self._toggle_ingredients)
 
-        # Image upload
         tk.Label(form, text="Product Image  (required)", font=FONT_LABEL,
                  bg=BG, fg=BROWN, anchor="w").pack(fill="x", pady=(8, 0))
 
         img_row = tk.Frame(form, bg=BG)
         img_row.pack(fill="x", pady=(4, 0))
 
-        # Preview box
         self.preview_lbl = tk.Label(img_row, bg=ENTRY_BG, width=10, height=5,
-                                    text="No image", font=FONT_SMALL, fg=SUBTLE,
-                                    relief="flat",
+                                    text="No image", font=FONT_SMALL, fg=SUBTLE, relief="flat",
                                     highlightbackground=ENTRY_BORDER, highlightthickness=1)
         self.preview_lbl.pack(side="left", padx=(0, 10))
 
@@ -359,7 +378,161 @@ class AddProductWindow:
                                      bg=BG, fg=SUBTLE, wraplength=160, justify="left")
         self.img_name_lbl.pack(anchor="w")
 
-        styled_button(form, "＋  Add Product", self._add, width=22).pack(pady=(16, 0), fill="x")
+        self.ingredients_frame = tk.Frame(form, bg=BG)
+        self._build_ingredients_section()
+
+        self.add_btn = styled_button(form, "＋  Add Product", self._add, width=22)
+        self.add_btn.pack(pady=(16, 0), fill="x")
+        self._toggle_ingredients()
+
+    def _build_ingredients_section(self):
+        self.ing_label = tk.Label(self.ingredients_frame, text="Ingredients  (required for Meals)",
+                                  font=FONT_LABEL, bg=BG, fg=BROWN, anchor="w")
+
+        self.ing_list_frame = tk.Frame(self.ingredients_frame, bg=ENTRY_BG,
+                                       relief="flat", highlightbackground=ENTRY_BORDER, highlightthickness=1)
+
+        self.btn_row = tk.Frame(self.ingredients_frame, bg=BG)
+        styled_button(self.btn_row, "＋ Add Ingredient", self._add_ingredient_dialog,
+                      bg=ACCENT, fg=BROWN, width=18).pack(side="left", padx=(0, 4))
+        styled_button(self.btn_row, "✎ New Ingredient", self._new_ingredient_dialog,
+                      bg=SUBTLE, fg=YELLOW, width=18).pack(side="left")
+
+    def _toggle_ingredients(self, *_):
+        if self.cat_var.get() == "meals":
+            self.ingredients_frame.pack(fill="x", pady=(8, 0), before=self.add_btn)
+            self.ing_label.pack(fill="x", pady=(8, 0))
+            self.ing_list_frame.pack(fill="x", pady=(4, 0))
+            self.btn_row.pack(fill="x", pady=(6, 0))
+            self._refresh_ingredient_list()
+        else:
+            self.ingredients_frame.pack_forget()
+            self.ingredients_list.clear()
+
+    def _refresh_ingredient_list(self):
+        for w in self.ing_list_frame.winfo_children():
+            w.destroy()
+        if not self.ingredients_list:
+            tk.Label(self.ing_list_frame, text="No ingredients added", font=FONT_SMALL,
+                     bg=ENTRY_BG, fg=SUBTLE, pady=8).pack()
+        else:
+            for i, ing in enumerate(self.ingredients_list):
+                row = tk.Frame(self.ing_list_frame, bg=ENTRY_BG)
+                row.pack(fill="x", padx=4, pady=2)
+                tk.Label(row, text=f"{ing['name']}: {ing['quantity']} {ing['unit']}",
+                         font=FONT_SMALL, bg=ENTRY_BG, fg=FG, anchor="w").pack(side="left", fill="x", expand=True)
+                tk.Button(row, text="✕", font=FONT_SMALL, bg="#c0392b", fg="white",
+                          relief="flat", bd=0, cursor="hand2", width=3,
+                          command=lambda idx=i: self._remove_ingredient(idx)).pack(side="right")
+
+    def _remove_ingredient(self, idx):
+        self.ingredients_list.pop(idx)
+        self._refresh_ingredient_list()
+
+    def _add_ingredient_dialog(self):
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Add Ingredient")
+        dialog.resizable(False, False)
+        dialog.configure(bg=BG)
+        dialog.grab_set()
+        dialog.geometry("350x280")
+
+        form = tk.Frame(dialog, bg=BG, padx=20, pady=16)
+        form.pack(fill="both", expand=True)
+
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT name, unit FROM ingredients ORDER BY name")
+        ingredients_data = {r[0]: r[1] for r in cursor.fetchall()}
+        conn.close()
+
+        tk.Label(form, text="Select Ingredient", font=FONT_LABEL,
+                 bg=BG, fg=BROWN, anchor="w").pack(fill="x", pady=(0, 2))
+        ing_border = tk.Frame(form, bg=ENTRY_BORDER, padx=1, pady=1)
+        ing_border.pack(fill="x")
+        ing_var = tk.StringVar()
+        ing_combo = ttk.Combobox(ing_border, textvariable=ing_var, values=list(ingredients_data.keys()),
+                                 state="readonly", font=FONT_ENTRY)
+        ing_combo.pack(fill="x", ipady=5, padx=4)
+
+        e_qty = entry_field(form, "Quantity")
+        
+        tk.Label(form, text="Unit", font=FONT_LABEL,
+                 bg=BG, fg=BROWN, anchor="w").pack(fill="x", pady=(8, 0))
+        unit_border = tk.Frame(form, bg=ENTRY_BORDER, padx=1, pady=1)
+        unit_border.pack(fill="x", pady=(2, 0))
+        unit_var = tk.StringVar()
+        e_unit = tk.Entry(unit_border, font=FONT_ENTRY, bg="#e8e8e8", fg=FG,
+                         relief="flat", bd=0, textvariable=unit_var, state="readonly")
+        e_unit.pack(fill="x", ipady=6, padx=4)
+
+        def on_ingredient_select(event):
+            selected = ing_var.get()
+            if selected in ingredients_data:
+                unit_var.set(ingredients_data[selected])
+
+        ing_combo.bind("<<ComboboxSelected>>", on_ingredient_select)
+
+        def save():
+            name = ing_var.get().strip()
+            qty = e_qty.get().strip()
+            unit = unit_var.get().strip()
+            if not all([name, qty, unit]):
+                messagebox.showerror("Error", "All fields are required.")
+                return
+            try:
+                float(qty)
+            except ValueError:
+                messagebox.showerror("Error", "Quantity must be numeric.")
+                return
+            self.ingredients_list.append({"name": name, "quantity": qty, "unit": unit})
+            self._refresh_ingredient_list()
+            dialog.destroy()
+
+        styled_button(form, "✓ Add", save, width=18).pack(pady=(12, 0), fill="x")
+
+    def _new_ingredient_dialog(self):
+        dialog = tk.Toplevel(self.root)
+        dialog.title("New Ingredient")
+        dialog.resizable(False, False)
+        dialog.configure(bg=BG)
+        dialog.grab_set()
+        dialog.geometry("350x280")
+
+        form = tk.Frame(dialog, bg=BG, padx=20, pady=16)
+        form.pack(fill="both", expand=True)
+
+        e_name = entry_field(form, "Ingredient Name")
+        e_stock = entry_field(form, "Initial Stock")
+        e_unit = entry_field(form, "Unit (e.g., grams, ml, pcs)")
+
+        def save():
+            name = e_name.get().strip()
+            stock = e_stock.get().strip()
+            unit = e_unit.get().strip()
+            if not all([name, stock, unit]):
+                messagebox.showerror("Error", "All fields are required.")
+                return
+            try:
+                float(stock)
+            except ValueError:
+                messagebox.showerror("Error", "Stock must be numeric.")
+                return
+            conn = connect_db()
+            cursor = conn.cursor()
+            cursor.execute("SELECT id FROM ingredients WHERE name=?", (name,))
+            if cursor.fetchone():
+                messagebox.showerror("Error", f"'{name}' already exists.")
+                conn.close()
+                return
+            cursor.execute("INSERT INTO ingredients (name, stock, unit) VALUES (?, ?, ?)",
+                           (name, stock, unit))
+            conn.commit()
+            conn.close()
+            messagebox.showinfo("Success", f"Ingredient '{name}' created.")
+            dialog.destroy()
+
+        styled_button(form, "✓ Create", save, width=18).pack(pady=(12, 0), fill="x")
 
     def _browse_image(self):
         from tkinter import filedialog
@@ -395,14 +568,30 @@ class AddProductWindow:
 
     def _add(self):
         import shutil
-        name     = self.e_name.get().strip()
-        price    = self.e_price.get().strip()
-        stock    = self.e_stock.get().strip()
+        name = self.e_name.get().strip()
+        price = self.e_price.get().strip()
+        stock = self.e_stock.get().strip()
+        threshold = self.e_threshold.get().strip() or "30"
         category = self.cat_var.get()
 
         if not all([name, price, stock, category]):
             messagebox.showerror("Error", "Please fill in all fields.")
             return
+
+        try:
+            threshold = int(threshold)
+        except ValueError:
+            messagebox.showerror("Error", "Threshold must be a number.")
+            return
+
+        if category == "meals" and not self.ingredients_list:
+            messagebox.showerror("Error", "Meal products must have at least one ingredient.")
+            return
+
+        for ing in self.ingredients_list:
+            if not ing.get("quantity") or not ing.get("unit"):
+                messagebox.showerror("Error", "All ingredients must have quantity and unit.")
+                return
 
         if not self._image_path:
             messagebox.showerror("Error", "Please upload a product image.")
@@ -416,8 +605,7 @@ class AddProductWindow:
             conn.close()
             return
 
-        # Copy image to assets folder with sanitized filename
-        ext      = os.path.splitext(self._image_path)[1].lower()
+        ext = os.path.splitext(self._image_path)[1].lower()
         filename = name.lower().replace(" ", "_").replace("/", "-") + ext
         assets_dir = os.path.join(os.path.dirname(__file__), "..", "assets", "food @chizzlin")
         dest = os.path.join(assets_dir, filename)
@@ -429,9 +617,17 @@ class AddProductWindow:
             return
 
         cursor.execute(
-            "INSERT INTO products (id, name, price, stock, category) VALUES (?, ?, ?, ?, ?)",
-            (self._get_next_id(), name, price, stock, category)
+            "INSERT INTO products (id, name, price, stock, category, low_stock_threshold) VALUES (?, ?, ?, ?, ?, ?)",
+            (self._get_next_id(), name, price, stock, category, threshold)
         )
+
+        if category == "meals":
+            for ing in self.ingredients_list:
+                cursor.execute(
+                    "INSERT INTO recipe_ingredients (product_name, ingredient_name, quantity, unit) VALUES (?, ?, ?, ?)",
+                    (name, ing["name"], ing["quantity"], ing["unit"])
+                )
+
         conn.commit()
         conn.close()
 
@@ -454,12 +650,11 @@ class EditProductWindow:
         self._image_path  = None
         self._preview_img = None
 
-        w, h = 420, 620
+        w, h = 420, 650
         x = (root.winfo_screenwidth() // 2) - (w // 2)
         y = (root.winfo_screenheight() // 2) - (h // 2)
         self.root.geometry(f"{w}x{h}+{x}+{y}")
 
-        # Banner
         banner = tk.Frame(root, bg=BROWN, height=38)
         banner.pack(fill="x")
         banner.pack_propagate(False)
@@ -476,6 +671,7 @@ class EditProductWindow:
         self.e_name     = entry_field(form, "New Name  (leave blank to keep)")
         self.e_price    = entry_field(form, "New Price  (leave blank to keep)")
         self.e_stock    = entry_field(form, "New Stock  (leave blank to keep)")
+        self.e_threshold = entry_field(form, "New Threshold  (leave blank to keep)")
 
         # Category dropdown
         tk.Label(form, text="New Category  (leave blank to keep)", font=FONT_LABEL,
@@ -537,6 +733,7 @@ class EditProductWindow:
         name     = self.e_name.get().strip()
         price    = self.e_price.get().strip()
         stock    = self.e_stock.get().strip()
+        threshold = self.e_threshold.get().strip()
         category = self.cat_var.get()
 
         if not pid:
@@ -545,7 +742,7 @@ class EditProductWindow:
 
         conn = connect_db()
         cursor = conn.cursor()
-        cursor.execute("SELECT name, price, stock, category FROM products WHERE id=?", (pid,))
+        cursor.execute("SELECT name, price, stock, category, low_stock_threshold FROM products WHERE id=?", (pid,))
         result = cursor.fetchone()
 
         if not result:
@@ -553,10 +750,11 @@ class EditProductWindow:
             conn.close()
             return
 
-        cur_name, cur_price, cur_stock, cur_cat = result
+        cur_name, cur_price, cur_stock, cur_cat, cur_threshold = result
         new_name = name     or cur_name
         price    = price    or cur_price
         category = category or cur_cat
+        threshold = threshold or cur_threshold
 
         if stock:
             try:
@@ -567,8 +765,14 @@ class EditProductWindow:
                 return
         else:
             stock = cur_stock
+        
+        try:
+            threshold = int(threshold)
+        except ValueError:
+            messagebox.showerror("Error", "Threshold must be a number.")
+            conn.close()
+            return
 
-        # Handle optional image replacement
         if self._image_path:
             ext        = os.path.splitext(self._image_path)[1].lower()
             filename   = new_name.lower().replace(" ", "_").replace("/", "-") + ext
@@ -582,8 +786,8 @@ class EditProductWindow:
                 return
 
         cursor.execute(
-            "UPDATE products SET name=?, price=?, stock=?, category=? WHERE id=?",
-            (new_name, price, stock, category, pid)
+            "UPDATE products SET name=?, price=?, stock=?, category=?, low_stock_threshold=? WHERE id=?",
+            (new_name, price, stock, category, threshold, pid)
         )
         conn.commit()
         conn.close()
