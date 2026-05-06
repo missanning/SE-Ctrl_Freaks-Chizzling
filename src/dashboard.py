@@ -180,7 +180,7 @@ class Dashboard(DashboardViews):
             return
         from user_management import UserManagement
         self._win_user_mgmt = tk.Toplevel(self.root)
-        UserManagement(self._win_user_mgmt)
+        UserManagement(self._win_user_mgmt, on_close=self.open_user_management)
 
     def logout_and_redirect(self):
         try:

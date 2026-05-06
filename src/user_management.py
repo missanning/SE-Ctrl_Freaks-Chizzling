@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from database_setup import connect_db
+from security import hash_password
 
 ROLES    = ["admin", "cashier", "inventory_staff"]
 BG       = "#FFF8EE"
@@ -63,12 +64,14 @@ class RoundedButton(tk.Canvas):
         self._draw(self._bg)
 
 class UserManagement:
-    def __init__(self, root, current_user_id: int = None):
+    def __init__(self, root, current_user_id: int = None, on_close=None):
         """
         :param current_user_id: ID of the logged-in user; prevents self-delete.
+        :param on_close: optional callback invoked after update to return to parent.
         """
         self.root            = root
         self.current_user_id = current_user_id
+        self.on_close        = on_close
         self.selected_id     = None
         self._show_password  = False
         self._status_job     = None
@@ -348,7 +351,7 @@ class UserManagement:
             con = connect_db()
             con.execute(
                 "INSERT INTO users (username, password, role) VALUES (?, ?, ?)",
-                (username, password, role),
+                (username, hash_password(password), role),
             )
             con.commit()
             con.close()
@@ -386,7 +389,7 @@ class UserManagement:
         if password:
             con.execute(
                 "UPDATE users SET username=?, password=?, role=? WHERE id=?",
-                (username, password, role, self.selected_id),
+                (username, hash_password(password), role, self.selected_id),
             )
         else:
             con.execute(
@@ -398,6 +401,8 @@ class UserManagement:
         self.load_users()
         self._clear_form()
         self._set_status(f"✔  User '{username}' updated successfully.", "#2d6a2d")
+        if self.on_close:
+            self.root.after(300, lambda: (self.root.destroy(), self.on_close()))
 
     def _delete_user(self):
         if not self.selected_id:
