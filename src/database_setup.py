@@ -250,109 +250,131 @@ def insert_default_data():
     )
 
     # INGREDIENT INVENTORY (Complete ingredient list)
-    ingredients = [
-        # Proteins
-        ("Pork", 5000, "grams"),
-        ("Liempo", 5000, "grams"),
-        ("Chicken Fillet", 5000, "grams"),
-        ("Tofu", 2000, "grams"),
-        ("Beef", 2000, "grams"),
-        ("Potato Fries", 5000, "grams"),
-
-        # Vegetables
-        ("Egg", 200, "pcs"),
-        ("Green Chili", 50, "pcs"),
-        ("Red Chili", 50, "pcs"),
-        ("Onion", 100, "pcs"),
-        ("Garlic", 100, "pcs"),
-        ("Tomato", 50, "pcs"),
-        ("Cucumber", 50, "pcs"),
-
-        # Seasonings & Sauces
-        ("Butter", 500, "grams"),
-        ("Seasoning", 500, "tsp"),
-        ("Oyster Sauce", 500, "tsp"),
-
-        # Flour & Breading
-        ("All Purpose Flour", 2000, "grams"),
-        ("Bread Crumbs", 2000, "grams"),
-
-        # Cooking Oil
-        ("Cooking Oil", 1500, "ml"),
-
-        # Dairy & Processed
-        ("Cheese", 100, "slices"),
-        ("Ham", 100, "slices"),
-        ("Crab Stick", 100, "slices")
-    ]
-
-    cursor.executemany(
-        "INSERT OR IGNORE INTO ingredients (name, stock, unit) VALUES (?, ?, ?)",
-        ingredients
-    )
-
-    # RECIPES (ingredient usage per menu item)
     recipes = [
 
-    # Sizzling Sisig (6 ingredients)
-    ("Sizzling Sisig", "Pork", 100, "grams"),
-    ("Sizzling Sisig", "Onion", 0.25, "pcs"),
-    ("Sizzling Sisig", "Egg", 1, "pcs"),
-    ("Sizzling Sisig", "Green Chili", 1, "pcs"),
-    ("Sizzling Sisig", "Butter", 10, "grams"),
-    ("Sizzling Sisig", "Seasoning", 0.5, "tsp"),
+# ================= SNACKS =================
 
-    # Sizzling Liempo (4 ingredients)
-    ("Sizzling Liempo", "Liempo", 100, "grams"),
-    ("Sizzling Liempo", "Garlic", 0.5, "pcs"),
-    ("Sizzling Liempo", "Oyster Sauce", 0.5, "tsp"),
-    ("Sizzling Liempo", "Seasoning", 0.5, "tsp"),
-
-    # Sizzling Tofu (4 ingredients)
-    ("Sizzling Tofu", "Tofu", 100, "grams"),
-    ("Sizzling Tofu", "Onion", 0.25, "pcs"),
-    ("Sizzling Tofu", "Red Chili", 1, "pcs"),
-    ("Sizzling Tofu", "Oyster Sauce", 0.5, "tsp"),
-
-    # Chicken Tenders (4 ingredients) — FIXED NAME
-    ("Chicken Tenders", "Chicken Fillet", 150, "grams"),
-    ("Chicken Tenders", "All Purpose Flour", 10, "grams"),
-    ("Chicken Tenders", "Bread Crumbs", 10, "grams"),
-    ("Chicken Tenders", "Egg", 1, "pcs"),
-
-    # Nachos (4 ingredients)
     ("Nachos", "Beef", 100, "grams"),
     ("Nachos", "Tomato", 1, "pcs"),
     ("Nachos", "Onion", 0.25, "pcs"),
     ("Nachos", "Cheese", 2, "slices"),
 
-    # Takoyaki - Cheese (5pcs)
+    ("Fries - Cheese", "Potato Fries", 150, "grams"),
+    ("Fries - Cheese", "Cheese", 2, "slices"),
+    ("Fries - Cheese", "Cooking Oil", 20, "ml"),
+
+    ("Fries - Barbeque", "Potato Fries", 150, "grams"),
+    ("Fries - Barbeque", "Seasoning", 1, "tsp"),
+    ("Fries - Barbeque", "Cooking Oil", 20, "ml"),
+
+    ("Fries - Sour and Cream", "Potato Fries", 150, "grams"),
+    ("Fries - Sour and Cream", "Seasoning", 1, "tsp"),
+    ("Fries - Sour and Cream", "Cooking Oil", 20, "ml"),
+
     ("Takoyaki - Cheese (5pcs)", "All Purpose Flour", 50, "grams"),
     ("Takoyaki - Cheese (5pcs)", "Egg", 1, "pcs"),
     ("Takoyaki - Cheese (5pcs)", "Cheese", 2, "slices"),
     ("Takoyaki - Cheese (5pcs)", "Cooking Oil", 10, "ml"),
     ("Takoyaki - Cheese (5pcs)", "Onion", 0.25, "pcs"),
 
-    # Takoyaki - Ham and Cheese (5pcs)
     ("Takoyaki - Ham and Cheese (5pcs)", "All Purpose Flour", 50, "grams"),
     ("Takoyaki - Ham and Cheese (5pcs)", "Egg", 1, "pcs"),
     ("Takoyaki - Ham and Cheese (5pcs)", "Cheese", 2, "slices"),
     ("Takoyaki - Ham and Cheese (5pcs)", "Ham", 2, "slices"),
     ("Takoyaki - Ham and Cheese (5pcs)", "Cooking Oil", 10, "ml"),
 
-    # Takoyaki - Crab (5pcs)
     ("Takoyaki - Crab (5pcs)", "All Purpose Flour", 50, "grams"),
     ("Takoyaki - Crab (5pcs)", "Egg", 1, "pcs"),
     ("Takoyaki - Crab (5pcs)", "Crab Stick", 2, "slices"),
     ("Takoyaki - Crab (5pcs)", "Onion", 0.25, "pcs"),
     ("Takoyaki - Crab (5pcs)", "Cooking Oil", 10, "ml"),
 
-    # Takoyaki - Overload (7pcs)
     ("Takoyaki - Overload (7pcs)", "All Purpose Flour", 60, "grams"),
     ("Takoyaki - Overload (7pcs)", "Egg", 1, "pcs"),
     ("Takoyaki - Overload (7pcs)", "Cheese", 2, "slices"),
     ("Takoyaki - Overload (7pcs)", "Ham", 2, "slices"),
     ("Takoyaki - Overload (7pcs)", "Crab Stick", 2, "slices"),
+
+    ("Shawarma Rice", "Chicken Fillet", 120, "grams"),
+    ("Shawarma Rice", "Cucumber", 0.25, "pcs"),
+    ("Shawarma Rice", "Onion", 0.25, "pcs"),
+    ("Shawarma Rice", "Garlic", 0.25, "pcs"),
+
+    # ================= MEALS =================
+
+    ("Chicken Tenders", "Chicken Fillet", 150, "grams"),
+    ("Chicken Tenders", "All Purpose Flour", 10, "grams"),
+    ("Chicken Tenders", "Bread Crumbs", 10, "grams"),
+    ("Chicken Tenders", "Egg", 1, "pcs"),
+
+    ("Sisig Silog", "Pork", 100, "grams"),
+    ("Sisig Silog", "Egg", 1, "pcs"),
+    ("Sisig Silog", "Onion", 0.25, "pcs"),
+    ("Sisig Silog", "Green Chili", 1, "pcs"),
+
+    ("Chicken silog", "Chicken Fillet", 120, "grams"),
+    ("Chicken silog", "Egg", 1, "pcs"),
+    ("Chicken silog", "Garlic", 0.25, "pcs"),
+    ("Chicken silog", "Cooking Oil", 10, "ml"),
+
+    ("Sizzling Sisig (Rice Meal)", "Pork", 100, "grams"),
+    ("Sizzling Sisig (Rice Meal)", "Egg", 1, "pcs"),
+    ("Sizzling Sisig (Rice Meal)", "Onion", 0.25, "pcs"),
+    ("Sizzling Sisig (Rice Meal)", "Seasoning", 0.5, "tsp"),
+
+    ("Sizzling Tofu (Rice Meal)", "Tofu", 100, "grams"),
+    ("Sizzling Tofu (Rice Meal)", "Red Chili", 1, "pcs"),
+    ("Sizzling Tofu (Rice Meal)", "Oyster Sauce", 0.5, "tsp"),
+
+    ("Sizzling Liempo (Rice Meal)", "Liempo", 100, "grams"),
+    ("Sizzling Liempo (Rice Meal)", "Garlic", 0.25, "pcs"),
+    ("Sizzling Liempo (Rice Meal)", "Seasoning", 0.5, "tsp"),
+
+    # ================= BUNDLES =================
+
+    ("Sizzling Sisig", "Pork", 120, "grams"),
+    ("Sizzling Sisig", "Onion", 0.25, "pcs"),
+    ("Sizzling Sisig", "Egg", 1, "pcs"),
+    ("Sizzling Sisig", "Green Chili", 1, "pcs"),
+
+    ("Sizzling Tofu", "Tofu", 120, "grams"),
+    ("Sizzling Tofu", "Red Chili", 1, "pcs"),
+    ("Sizzling Tofu", "Oyster Sauce", 0.5, "tsp"),
+
+    ("Sizzling Liempo", "Liempo", 120, "grams"),
+    ("Sizzling Liempo", "Garlic", 0.25, "pcs"),
+    ("Sizzling Liempo", "Seasoning", 0.5, "tsp"),
+
+    ("Sisig and Liempo", "Pork", 80, "grams"),
+    ("Sisig and Liempo", "Liempo", 80, "grams"),
+    ("Sisig and Liempo", "Onion", 0.25, "pcs"),
+
+    ("Sisig and Tofu", "Pork", 80, "grams"),
+    ("Sisig and Tofu", "Tofu", 80, "grams"),
+    ("Sisig and Tofu", "Onion", 0.25, "pcs"),
+
+    ("Sizzling Liempo and Tofu", "Liempo", 80, "grams"),
+    ("Sizzling Liempo and Tofu", "Tofu", 80, "grams"),
+    ("Sizzling Liempo and Tofu", "Garlic", 0.25, "pcs"),
+
+    # ================= DRINKS (placeholder minimal) =================
+
+    ("Chocolate Milk Tea", "Seasoning", 1, "tsp"),
+    ("Okinawa Milk Tea", "Seasoning", 1, "tsp"),
+    ("Taro Milk Tea", "Seasoning", 1, "tsp"),
+    ("Matcha Milk Tea", "Seasoning", 1, "tsp"),
+    ("Wintermelon Milk Tea", "Seasoning", 1, "tsp"),
+
+    ("Blueberry Fruit Tea", "Seasoning", 1, "tsp"),
+    ("Strawberry Fruit Tea", "Seasoning", 1, "tsp"),
+    ("Green Apple Fruit Tea", "Seasoning", 1, "tsp"),
+
+    ("Blueberry Fruit Soda", "Seasoning", 1, "tsp"),
+    ("Strawberry Fruit Soda", "Seasoning", 1, "tsp"),
+    ("Green Apple Fruit Soda", "Seasoning", 1, "tsp"),
+
+    ("Pearl", "Seasoning", 1, "tsp"),
+    ("Nata De Coco", "Seasoning", 1, "tsp"),
     ]
 
     cursor.executemany(
