@@ -103,7 +103,7 @@ class BackupManager:
         location = self.config.get("backup_location")
        
         if not last_backup:
-            return "Never", "Not set"
+            return "Never", location or "Not set"
        
         try:
             last_date = datetime.fromisoformat(last_backup)
