@@ -23,8 +23,8 @@ IMAGE_MAP = {
     "Nachos": "nachos.jpg",
     "Shawarma Rice": "shawarmarice.jpg",
     "Fries - Cheese": "fries.jpg",
-    "Fries - Barbeque": "fries.jpg",
-    "Fries - Sour and Cream": "fries.jpg",
+    "Fries - Barbeque": "fries_bbq.png",
+    "Fries - Sour and Cream": "fries_sourcream.png",
     "Takoyaki - Cheese (5pcs)": "takoyakicheese.jpg",
     "Takoyaki - Ham and Cheese (5pcs)": "takoyakihamcheese.jpg",
     "Takoyaki - Crab (5pcs)": "takoyakicrab.jpg",
@@ -47,27 +47,51 @@ IMAGE_MAP = {
     "Gin Kwatro": "ginkwatro.jpg",
     "Pale Pilsen": "palepilsen.png",
     "Chocolate Milk Tea": "Chocolate.png",
+    "Chocolate Milk Tea 1 liter": "Chocolate.png",
     "Dark Chocolate Milk Tea": "Dark Chocolate.png",
+    "Dark Chocolate Milk Tea 1 liter": "Dark Chocolate.png",
     "Taro Milk Tea": "Taro.png",
+    "Taro Milk Tea 1 liter": "Taro.png",
     "Red Velvet Milk Tea": "RedVelvet.png",
-    "Brown Sugar Milk Tea": "Brown Sugar.png",
+    "Red Velvet Milk Tea 1 liter": "RedVelvet.png",
     "Matcha Milk Tea": "Matcha.png",
+    "Matcha Milk Tea 1 liter": "Matcha.png",
     "Wintermelon Milk Tea": "Wintermelon.png",
+    "Wintermelon Milk Tea 1 liter": "Wintermelon.png",
     "Cookies & Cream Milk Tea": "cookies&cream.png",
+    "Cookies & Cream Milk Tea 1 liter": "cookies&cream.png",
     "White Bunny Milk Tea": "White bunny.png",
+    "White Bunny Milk Tea 1 liter": "White bunny.png",
     "Mango Cheesecake Milk Tea": "Mangocheesecake.png",
+    "Mango Cheesecake Milk Tea 1 liter": "Mangocheesecake.png",
     "Blue Lemonade Fruit Tea": "Blue lemonade .png",
+    "Blue Lemonade Fruit Tea 1 liter": "Blue lemonade .png",
     "Blueberry Fruit Tea": "Blueberry.png",
+    "Blueberry Fruit Tea 1 liter": "Blueberry.png",
     "Strawberry Fruit Tea": "Strawberry M.png",
+    "Strawberry Fruit Tea 1 liter": "Strawberry M.png",
     "Green Apple Fruit Tea": "Green Apple.png",
+    "Green Apple Fruit Tea 1 liter": "Green Apple.png",
     "Four Seasons Fruit Tea": "Four Seasons.png",
-    "Lychee Fruit Tea": "Lychee.png"
-
-
-
-
-
-
+    "Four Seasons Fruit Tea 1 liter": "Four Seasons.png",
+    "Lychee Fruit Tea": "Lychee.png",
+    "Lychee Fruit Tea 1 liter": "Lychee.png",
+    "Okinawa Milk Tea": "Okinawa.png",
+    "Okinawa Milk Tea 1 liter": "Okinawa.png",
+    "Strawberry Fruit Soda": "Strawberry.png",
+    "Strawberry Fruit Soda 1 liter": "Strawberry.png",
+    "Blueberry Fruit Soda": "Blueberry.png",
+    "Blueberry Fruit Soda 1 liter": "Blueberry.png",
+    "Green Apple Fruit Soda 1 liter": "Green Apple.png",
+    "Green Apple Fruit Soda": "Green Apple.png",
+    "Lychee Fruit Soda": "Lychee.png",
+    "Lychee Fruit Soda 1 liter": "Lychee.png",
+    "Blue Lemonade Fruit Soda": "Blue lemonade .png",
+    "Blue Lemonade Fruit Soda 1 liter": "Blue lemonade .png",
+    "Four Seasons Fruit Soda": "Four Seasons.png",
+    "Four Seasons Fruit Soda 1 liter": "Four Seasons.png",
+    "Pearl": "Pearl.png",
+    "Nata De Coco": "Nata.png",
 }
 ASSETS_DIR = os.path.join(os.path.dirname(__file__), "..", "assets", "food @chizzlin")
 
@@ -310,8 +334,14 @@ class ProductDisplay:
             HOVER_BTN = "#E8920A"
 
             all_widgets = [card, img_frame, img_label, info] + list(info.winfo_children())
+            
+            # Track hover state to prevent rapid flickering
+            hover_state = {'active': False}
 
-            def _on_enter(e, c=card, ws=all_widgets, ab=add_btn):
+            def _on_enter(e, c=card, ws=all_widgets, ab=add_btn, state=hover_state):
+                if state['active']:
+                    return
+                state['active'] = True
                 c.config(highlightbackground=PRIMARY, highlightthickness=2, bg=HOVER_BG)
                 for w in ws:
                     try: w.config(bg=HOVER_BG)
@@ -320,7 +350,10 @@ class ProductDisplay:
                 img_frame.config(bg=BG)
                 img_label.config(bg=BG)
 
-            def _on_leave(e, c=card, ws=all_widgets, ab=add_btn):
+            def _on_leave(e, c=card, ws=all_widgets, ab=add_btn, state=hover_state):
+                if not state['active']:
+                    return
+                state['active'] = False
                 c.config(highlightbackground=BORDER, highlightthickness=1, bg=WHITE)
                 for w in ws:
                     try: w.config(bg=WHITE)

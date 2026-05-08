@@ -196,7 +196,7 @@ class ArchiveFeature:
     def unarchive_products(self):
         keyword = self.unarchive_entry.get().strip()
         if not keyword:
-            messagebox.showwarning("Unarchive", "Enter a product ID or name.")
+            messagebox.showwarning("Unarchive", "Enter a product ID or name.", parent=self.root)
             return
 
         conn = connect_db()
@@ -205,11 +205,11 @@ class ArchiveFeature:
         result = cursor.fetchone()
 
         if not result:
-            messagebox.showerror("Not Found", "Product not found in archive.")
+            messagebox.showerror("Not Found", "Product not found in archive.", parent=self.root)
             conn.close()
             return
 
-        if not messagebox.askyesno("Confirm Unarchive", f"Unarchive '{result[1]}'?"):
+        if not messagebox.askyesno("Confirm Unarchive", f"Unarchive '{result[1]}'?", parent=self.root):
             conn.close()
             return
 
@@ -222,13 +222,15 @@ class ArchiveFeature:
         conn.close()
 
         self.unarchive_entry.delete(0, tk.END)
-        messagebox.showinfo("Unarchived", "Product unarchived successfully.")
         self.load_products()
+        self.root.lift()
+        self.root.focus_force()
+        messagebox.showinfo("Unarchived", "Product unarchived successfully.", parent=self.root)
 
     def delete_product(self):
         keyword = self.delete_entry.get().strip()
         if not keyword:
-            messagebox.showwarning("Delete", "Enter a product ID or name.")
+            messagebox.showwarning("Delete", "Enter a product ID or name.", parent=self.root)
             return
 
         conn = connect_db()
@@ -237,11 +239,11 @@ class ArchiveFeature:
         result = cursor.fetchone()
 
         if not result:
-            messagebox.showerror("Not Found", "Product not found in archive.")
+            messagebox.showerror("Not Found", "Product not found in archive.", parent=self.root)
             conn.close()
             return
 
-        if not messagebox.askyesno("Confirm Delete", f"Permanently delete '{result[1]}'?\n\nThis action cannot be undone!"):
+        if not messagebox.askyesno("Confirm Delete", f"Permanently delete '{result[1]}'?\n\nThis action cannot be undone!", parent=self.root):
             conn.close()
             return
 
@@ -250,5 +252,7 @@ class ArchiveFeature:
         conn.close()
 
         self.delete_entry.delete(0, tk.END)
-        messagebox.showinfo("Deleted", "Product deleted permanently.")
         self.load_products()
+        self.root.lift()
+        self.root.focus_force()
+        messagebox.showinfo("Deleted", "Product deleted permanently.", parent=self.root)
