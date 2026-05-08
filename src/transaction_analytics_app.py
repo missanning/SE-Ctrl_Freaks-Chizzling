@@ -4,6 +4,7 @@ from tkcalendar import DateEntry
 import sqlite3
 from datetime import datetime
 import os
+import sys
 
 BG      = "#FFF8EE"
 SIDEBAR = "#7a3b10"
@@ -21,9 +22,18 @@ CARD_PALETTE = [
     ("#ffd966", "#3b1f0a"),
 ]
 
-def connect_db():
-    db_path = os.path.join(os.path.dirname(__file__), "sales_inventory.db")
-    return sqlite3.connect(db_path)
+# Import centralized database connection
+try:
+    from db_connection import connect_db, get_db_path
+except ImportError:
+    # Fallback if db_connection is not available
+    def connect_db():
+        if getattr(sys, 'frozen', False):
+            base_path = os.path.dirname(sys.executable)
+        else:
+            base_path = os.path.dirname(__file__)
+        db_path = os.path.join(base_path, "sales_inventory.db")
+        return sqlite3.connect(db_path)
 
 
 class TransactionAnalyticsApp:

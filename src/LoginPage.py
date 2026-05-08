@@ -1,10 +1,18 @@
 import tkinter as tk
 from tkinter import messagebox
-from database_setup import connect_db
+from database_setup import connect_db, create_tables, insert_default_data, migrate_plain_passwords
 from security import verify_password, is_hashed, hash_password
 import os
 import sys
 import platform
+
+# Initialize database on startup
+try:
+    create_tables()
+    insert_default_data()
+    migrate_plain_passwords()
+except Exception as e:
+    print(f"Database initialization: {e}")
 
 try:
     from PIL import Image, ImageTk
@@ -53,6 +61,12 @@ class MainApp:
         self.root.title("Chizzling — Login")
         self.root.configure(bg=BG)
         self.root.resizable(False, False)
+        
+        # Set window icon
+        self._set_window_icon()
+
+        # Initialize database on startup
+        self._initialize_database()
 
         w, h = 400, 540
         self.root.update_idletasks()
@@ -65,6 +79,37 @@ class MainApp:
             self.root.after(10, self._set_taskbar_presence)
 
         self._build_ui()
+
+    def _set_window_icon(self):
+        """Set the window icon for the application."""
+        try:
+            icon_path = self._get_asset_path("LOGO.ico")
+            if os.path.exists(icon_path):
+                self.root.iconbitmap(icon_path)
+                # Also set as default icon for all Toplevel windows
+                self.root.iconbitmap(default=icon_path)
+        except Exception as e:
+            print(f"Failed to set window icon: {e}")
+
+    def _get_asset_path(self, filename):
+        """Get the correct path for assets, handling both dev and bundled executable."""
+        if getattr(sys, 'frozen', False):
+            if hasattr(sys, '_MEIPASS'):
+                return os.path.join(sys._MEIPASS, "assets", filename)
+            else:
+                return os.path.join(os.path.dirname(sys.executable), "assets", filename)
+        else:
+            return os.path.join(os.path.dirname(__file__), "..", "assets", filename)
+
+    def _initialize_database(self):
+        """Initialize database and populate with default data if needed"""
+        try:
+            from database_setup import create_tables, insert_default_data, migrate_plain_passwords
+            create_tables()
+            insert_default_data()
+            migrate_plain_passwords()
+        except Exception as e:
+            print(f"Database initialization error: {e}")
 
     def _build_ui(self):
         root = self.root
@@ -101,11 +146,16 @@ class MainApp:
         card.pack()
 
         # ── Logo ──
-        logo_path = os.path.join(os.path.dirname(__file__), "..", "assets", "LOGO.png")
+        logo_path = self._get_asset_path("LOGO.png")
         if PIL_AVAILABLE and os.path.exists(logo_path):
-            img = Image.open(logo_path).resize((150, 150), Image.LANCZOS)
-            self.logo_img = ImageTk.PhotoImage(img)
-            tk.Label(card, image=self.logo_img, bg=CARD_BG).pack(pady=(0, 4))
+            try:
+                img = Image.open(logo_path).resize((150, 150), Image.LANCZOS)
+                self.logo_img = ImageTk.PhotoImage(img)
+                tk.Label(card, image=self.logo_img, bg=CARD_BG).pack(pady=(0, 4))
+            except Exception as e:
+                print(f"Failed to load logo: {e}")
+                tk.Label(card, text="🛒", font=(FONT_FAM, 30),
+                         bg=CARD_BG, fg=ACCENT).pack()
         else:
             tk.Label(card, text="🛒", font=(FONT_FAM, 30),
                      bg=CARD_BG, fg=ACCENT).pack()

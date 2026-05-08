@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import messagebox
 import sqlite3
 import os
+import sys
 from datetime import datetime
 
 from receipt_module       import show_receipt_window
@@ -9,17 +10,11 @@ from pos_header           import POSHeader
 from category_navigation  import CategoryNavigation
 from product_display      import ProductDisplay
 from cart_manager         import CartManager
+from database_setup       import connect_db
 
 BG     = "#FFF8EE"
 WHITE  = "#FFFFFF"
 BORDER = "#FFD966"
-
-
-def connect_db():
-    db_path = os.path.join(os.path.dirname(__file__), "sales_inventory.db")
-    conn = sqlite3.connect(db_path, timeout=10)
-    conn.execute("PRAGMA journal_mode=WAL")
-    return conn
 
 
 class ChizzlingPOS:
@@ -32,11 +27,35 @@ class ChizzlingPOS:
         self.root.title("Chizzling POS System")
         self.root.configure(bg=BG)
         self.root.state("zoomed")
+        
+        # Set window icon
+        self._set_window_icon()
 
         self._build_ui()
         self.root.update()
         self._load_categories()
         self.load_products(None)
+
+    def _set_window_icon(self):
+        """Set the window icon for the application."""
+        try:
+            icon_path = self._get_asset_path("LOGO.ico")
+            if os.path.exists(icon_path):
+                self.root.iconbitmap(icon_path)
+                # Also set as default icon for all Toplevel windows
+                self.root.iconbitmap(default=icon_path)
+        except Exception as e:
+            print(f"Failed to set window icon: {e}")
+
+    def _get_asset_path(self, filename):
+        """Get the correct path for assets, handling both dev and bundled executable."""
+        if getattr(sys, 'frozen', False):
+            if hasattr(sys, '_MEIPASS'):
+                return os.path.join(sys._MEIPASS, "assets", filename)
+            else:
+                return os.path.join(os.path.dirname(sys.executable), "assets", filename)
+        else:
+            return os.path.join(os.path.dirname(__file__), "..", "assets", filename)
 
     def _build_ui(self):
         POSHeader(self.root, self.username, self.role, logout_cmd=self._logout)
@@ -196,13 +215,8 @@ class ChizzlingPOS:
         return result[0] if result else 0
 
     def _logout(self):
-        self.root.destroy()
-        import sys
-        sys.path.insert(0, os.path.dirname(__file__))
-        from LoginPage import MainApp
-        new_root = tk.Tk()
-        MainApp(new_root)
-        new_root.mainloop()
+        from logout_helper import logout_and_restart
+        logout_and_restart(self.root)
     
     def process_full_sale(self, cursor, product_id, product_name, quantity):
 

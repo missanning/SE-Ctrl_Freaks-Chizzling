@@ -1,5 +1,6 @@
 import tkinter as tk
 import os
+import sys
 try:
     from PIL import Image, ImageTk
     PIL_AVAILABLE = True
@@ -30,13 +31,16 @@ class POSHeader:
         bar.pack_propagate(False)
 
         # Logo
-        logo_path = os.path.join(os.path.dirname(__file__), "..", "assets", "LOGO.png")
+        logo_path = self._get_asset_path("LOGO.png")
         logo_frame = tk.Frame(bar, bg=HEADER)
         logo_frame.pack(side="left", padx=(12, 4), pady=5)
         if PIL_AVAILABLE and os.path.exists(logo_path):
-            img = Image.open(logo_path).resize((120, 120), Image.LANCZOS)
-            self._logo_img = ImageTk.PhotoImage(img)
-            tk.Label(logo_frame, image=self._logo_img, bg=HEADER).pack(side="left")
+            try:
+                img = Image.open(logo_path).resize((120, 120), Image.LANCZOS)
+                self._logo_img = ImageTk.PhotoImage(img)
+                tk.Label(logo_frame, image=self._logo_img, bg=HEADER).pack(side="left")
+            except Exception as e:
+                print(f"Failed to load logo: {e}")
         tk.Label(logo_frame, text="Chizzling", font=(FONT_FAM, 18, "bold"),
                  fg=WHITE, bg=HEADER).pack(side="left", padx=(8, 0))
         tk.Label(logo_frame, text="POS.", font=(FONT_FAM, 18, "bold"),
@@ -65,6 +69,16 @@ class POSHeader:
 
         # Separator
         tk.Frame(self.parent, bg=BORDER, height=2).pack(fill="x")
+
+    def _get_asset_path(self, filename):
+        """Get the correct path for assets, handling both dev and bundled executable."""
+        if getattr(sys, 'frozen', False):
+            if hasattr(sys, '_MEIPASS'):
+                return os.path.join(sys._MEIPASS, "assets", filename)
+            else:
+                return os.path.join(os.path.dirname(sys.executable), "assets", filename)
+        else:
+            return os.path.join(os.path.dirname(__file__), "..", "assets", filename)
 
     def _do_logout(self):
         if self.logout_cmd:

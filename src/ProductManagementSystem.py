@@ -57,11 +57,35 @@ class ProductManagementSystem:
         self.stocks = 30
         self.archive_window = None
         self.ingredients_window = None
+        
+        # Set window icon
+        self._set_window_icon()
 
         self._build_ui()
         self.load_products()
         self.root.after(100, self.root.focus_force)
         self.root.bind_all("<Button-1>", self._fix_focus, add="+")
+
+    def _set_window_icon(self):
+        """Set the window icon for the application."""
+        try:
+            icon_path = self._get_asset_path("LOGO.ico")
+            if os.path.exists(icon_path):
+                self.root.iconbitmap(icon_path)
+                self.root.iconbitmap(default=icon_path)
+        except Exception as e:
+            print(f"Failed to set window icon: {e}")
+
+    def _get_asset_path(self, filename):
+        """Get the correct path for assets, handling both dev and bundled executable."""
+        import sys
+        if getattr(sys, 'frozen', False):
+            if hasattr(sys, '_MEIPASS'):
+                return os.path.join(sys._MEIPASS, "assets", filename)
+            else:
+                return os.path.join(os.path.dirname(sys.executable), "assets", filename)
+        else:
+            return os.path.join(os.path.dirname(__file__), "..", "assets", filename)
 
     def _fix_focus(self, event):
         if isinstance(event.widget, tk.Entry):
@@ -313,11 +337,8 @@ class ProductManagementSystem:
         window.destroy()
 
     def _logout(self):
-        from LoginPage import MainApp
-        self.root.destroy()
-        new_root = tk.Tk()
-        MainApp(new_root)
-        new_root.mainloop()
+        from logout_helper import logout_and_restart
+        logout_and_restart(self.root)
 
     def OpenBackupWindow(self):
         BackupWindow(self.root)
@@ -627,6 +648,17 @@ class AddProductWindow:
         ext = os.path.splitext(self._image_path)[1].lower()
         filename = name.lower().replace(" ", "_").replace("/", "-") + ext
         assets_dir = os.path.join(os.path.dirname(__file__), "..", "assets", "food @chizzlin")
+        assets_dir = os.path.abspath(assets_dir)
+        
+        # Create directory if it doesn't exist
+        if not os.path.exists(assets_dir):
+            try:
+                os.makedirs(assets_dir)
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to create assets directory:\n{e}")
+                conn.close()
+                return
+        
         dest = os.path.join(assets_dir, filename)
         try:
             shutil.copy2(self._image_path, dest)
@@ -1014,6 +1046,17 @@ class EditProductWindow:
             ext        = os.path.splitext(self._image_path)[1].lower()
             filename   = name.lower().replace(" ", "_").replace("/", "-") + ext
             assets_dir = os.path.join(os.path.dirname(__file__), "..", "assets", "food @chizzlin")
+            assets_dir = os.path.abspath(assets_dir)
+            
+            # Create directory if it doesn't exist
+            if not os.path.exists(assets_dir):
+                try:
+                    os.makedirs(assets_dir)
+                except Exception as e:
+                    messagebox.showerror("Error", f"Failed to create assets directory:\n{e}")
+                    conn.close()
+                    return
+            
             dest       = os.path.join(assets_dir, filename)
             try:
                 shutil.copy2(self._image_path, dest)

@@ -1,11 +1,27 @@
 import os
+import sys
 import sqlite3
 from datetime import datetime, timedelta
 
-
-def connect_db():
-    db_path = os.path.join(os.path.dirname(__file__), "sales_inventory.db")
-    return sqlite3.connect(db_path)
+# Import centralized database connection
+try:
+    from db_connection import connect_db, get_db_path
+except ImportError:
+    # Fallback if db_connection is not available
+    def connect_db():
+        if getattr(sys, 'frozen', False):
+            base_path = os.path.dirname(sys.executable)
+        else:
+            base_path = os.path.dirname(__file__)
+        db_path = os.path.join(base_path, "sales_inventory.db")
+        return sqlite3.connect(db_path)
+    
+    def get_db_path():
+        if getattr(sys, 'frozen', False):
+            base_path = os.path.dirname(sys.executable)
+        else:
+            base_path = os.path.dirname(__file__)
+        return os.path.join(base_path, "sales_inventory.db")
 
 
 def get_date_range(period):

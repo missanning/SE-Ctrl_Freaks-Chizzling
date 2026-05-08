@@ -28,8 +28,34 @@ class Dashboard(DashboardViews):
         self._win_analytics = None
         self._win_user_mgmt = None
         self._active_btn = None
+        
+        # Set window icon
+        self._set_window_icon()
+        
         self._build_layout()
-        self.show_daily_sales()
+        
+        # Delay initial view to ensure layout is ready
+        self.root.after(100, self.show_daily_sales)
+
+    def _set_window_icon(self):
+        """Set the window icon for the application."""
+        try:
+            icon_path = self._get_asset_path("LOGO.ico")
+            if os.path.exists(icon_path):
+                self.root.iconbitmap(icon_path)
+                self.root.iconbitmap(default=icon_path)
+        except Exception as e:
+            print(f"Failed to set window icon: {e}")
+
+    def _get_asset_path(self, filename):
+        """Get the correct path for assets, handling both dev and bundled executable."""
+        if getattr(sys, 'frozen', False):
+            if hasattr(sys, '_MEIPASS'):
+                return os.path.join(sys._MEIPASS, "assets", filename)
+            else:
+                return os.path.join(os.path.dirname(sys.executable), "assets", filename)
+        else:
+            return os.path.join(os.path.dirname(__file__), "..", "assets", filename)
 
     def _build_layout(self):
         main = tk.Frame(self.root, bg=BG)
@@ -43,14 +69,15 @@ class Dashboard(DashboardViews):
         # Logo area
         logo_frame = tk.Frame(sidebar, bg=SIDEBAR, pady=20)
         logo_frame.pack(fill="x")
-        logo_path = os.path.join(os.path.dirname(__file__), "..", "assets", "LOGO.png")
+        logo_path = self._get_asset_path("LOGO.png")
         try:
             from PIL import Image, ImageTk
-            img = Image.open(logo_path).resize((150, 150), Image.LANCZOS)
-            self._logo_img = ImageTk.PhotoImage(img)
-            tk.Label(logo_frame, image=self._logo_img, bg=SIDEBAR).pack()
-        except Exception:
-            pass
+            if os.path.exists(logo_path):
+                img = Image.open(logo_path).resize((150, 150), Image.LANCZOS)
+                self._logo_img = ImageTk.PhotoImage(img)
+                tk.Label(logo_frame, image=self._logo_img, bg=SIDEBAR).pack()
+        except Exception as e:
+            print(f"Failed to load logo: {e}")
         tk.Label(logo_frame, text="Admin Dashboard", font=(FONT, 13, "bold"),
                  bg=SIDEBAR, fg=YELLOW).pack(pady=(6, 0))
         tk.Frame(sidebar, bg=ACCENT, height=2).pack(fill="x", padx=16, pady=(10, 0))
@@ -190,12 +217,8 @@ class Dashboard(DashboardViews):
         BackupWindow(self.root)
 
     def logout_and_redirect(self):
-        try:
-            self.root.destroy()
-            subprocess.Popen([sys.executable, "LoginPage.py"],
-                             cwd=os.path.dirname(__file__))
-        except Exception as e:
-            print(f"Error during logout: {e}")
+        from logout_helper import logout_and_restart
+        logout_and_restart(self.root)
 
 
 if __name__ == "__main__":

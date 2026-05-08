@@ -1,9 +1,25 @@
 import sqlite3
 import os
+import sys
 from security import hash_password, is_hashed
 
 def connect_db():
-    db_path = os.path.join(os.path.dirname(__file__), "sales_inventory.db")
+    # Always use the src directory for the database
+    # This ensures both source and executable use the same database
+    if getattr(sys, 'frozen', False):
+        # Running as compiled executable
+        # Get the directory where the source files are
+        if hasattr(sys, '_MEIPASS'):
+            # PyInstaller temp folder - not ideal for database
+            # Use the directory where the .exe is located
+            base_path = os.path.dirname(sys.executable)
+        else:
+            base_path = os.path.dirname(sys.executable)
+    else:
+        # Running as script
+        base_path = os.path.dirname(__file__)
+    
+    db_path = os.path.join(base_path, "sales_inventory.db")
     return sqlite3.connect(db_path)
 
 

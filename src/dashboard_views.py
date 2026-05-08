@@ -36,29 +36,23 @@ class DashboardViews:
 
     def _make_card(self, parent, idx, label, value, value_font_size=26):
         bg, fg = CARD_PALETTE[idx % len(CARD_PALETTE)]
-        # Canvas-based rounded card
-        canvas = tk.Canvas(parent, bg=parent.cget("bg"), highlightthickness=0,
-                           width=200, height=110)
-        canvas.pack(side="left", padx=8, pady=8, fill="both", expand=True)
-
-        def _draw(c=canvas, color=bg):
-            c.delete("all")
-            w, h = c.winfo_width(), c.winfo_height()
-            if w < 10 or h < 10:
-                return
-            r = 18
-            c.create_polygon(
-                r, 0, w-r, 0, w, 0, w, r, w, h-r, w, h, w-r, h,
-                r, h, 0, h, 0, h-r, 0, r, 0, 0,
-                smooth=True, fill=color, outline=color
-            )
-            c.create_text(14, 14, text=label, font=(FONT, 12, "bold"),
-                          fill=fg, anchor="nw")
-            c.create_text(14, 48, text=value, font=(FONT, value_font_size, "bold"),
-                          fill=fg, anchor="nw")
-
-        canvas.bind("<Configure>", lambda e: _draw())
-        canvas.after(50, _draw)
+        
+        # Use Frame with explicit size for reliable rendering
+        card = tk.Frame(parent, bg=bg, relief="raised", bd=2, width=250, height=120)
+        card.pack(side="left", padx=8, pady=8, fill="both", expand=True)
+        card.pack_propagate(False)  # Prevent shrinking
+        
+        # Add padding frame
+        inner = tk.Frame(card, bg=bg)
+        inner.pack(fill="both", expand=True, padx=12, pady=12)
+        
+        tk.Label(inner, text=label, font=(FONT, 11, "bold"),
+                 bg=bg, fg=fg, anchor="w", wraplength=220, justify="left").pack(anchor="w", pady=(0, 8))
+        tk.Label(inner, text=value, font=(FONT, value_font_size, "bold"),
+                 bg=bg, fg=fg, anchor="w").pack(anchor="w")
+        
+        # Force immediate update
+        card.update_idletasks()
 
     def _make_table(self, parent, headers, rows):
         tbl = tk.Frame(parent, bg=CONTENT)
@@ -149,21 +143,30 @@ class DashboardViews:
             self.header_label.config(text="📊  Daily Sales")
         today = datetime.now().strftime("%Y-%m-%d")
 
-        conn = connect_db()
-        with conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT COUNT(*), SUM(total) FROM transactions WHERE date LIKE ?", (today + '%',))
-            r = cursor.fetchone()
-        conn.close()
+        try:
+            conn = connect_db()
+            with conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT COUNT(*), SUM(total) FROM transactions WHERE date LIKE ?", (today + '%',))
+                r = cursor.fetchone()
+            conn.close()
 
-        count = r[0] or 0
-        total = r[1] or 0.0
-        avg   = total / count if count else 0
+            count = r[0] or 0
+            total = r[1] or 0.0
+            avg   = total / count if count else 0
+        except Exception as e:
+            # Show error in UI if database fails
+            error_msg = f"Database Error: {str(e)}"
+            tk.Label(self.content_frame, text=error_msg, font=(FONT, 14, "bold"),
+                     bg=CONTENT, fg="#C0392B", wraplength=800).pack(pady=40)
+            print(error_msg)
+            return
 
         self._section_title(self.content_frame, "Daily Sales Overview")
 
-        cards = tk.Frame(self.content_frame, bg=CONTENT)
+        cards = tk.Frame(self.content_frame, bg=CONTENT, height=140)
         cards.pack(fill="x", pady=(0, 16))
+        cards.pack_propagate(False)  # Maintain height
         self._make_card(cards, 0, "💰  TODAY'S TOTAL SALES", f"₱{total:,.2f}")
         self._make_card(cards, 1, "🧾  TRANSACTIONS",        str(count))
         self._make_card(cards, 2, "📈  AVG TRANSACTION",     f"₱{avg:,.2f}", 18)
@@ -175,8 +178,13 @@ class DashboardViews:
         if count:
             msg += f"   |   Avg: ₱{avg:,.2f}"
         else:
-            msg += "\nNo transactions recorded today."
+            msg += "\n\n💡 No transactions recorded today. Start making sales to see data here!"
         self._perf_box(self.content_frame, msg)
+        
+        # Force multiple updates to ensure rendering
+        cards.update_idletasks()
+        self.content_frame.update_idletasks()
+        self.root.update_idletasks()
 
     # ── Weekly Sales ──────────────────────────────────────────────────────────
 
@@ -209,8 +217,9 @@ class DashboardViews:
 
         self._section_title(self.content_frame, "Weekly Sales Overview")
 
-        cards = tk.Frame(self.content_frame, bg=CONTENT)
+        cards = tk.Frame(self.content_frame, bg=CONTENT, height=140)
         cards.pack(fill="x", pady=(0, 16))
+        cards.pack_propagate(False)
         self._make_card(cards, 0, "💰  TOTAL WEEKLY SALES", f"₱{total:,.2f}")
         self._make_card(cards, 1, "📅  DAILY AVERAGE",      f"₱{avg_daily:,.2f}", 18)
         self._make_card(cards, 2, "🧾  TOTAL TRANSACTIONS", str(count))
@@ -448,8 +457,9 @@ class DashboardViews:
         avg_price = total_rev / total_qty if total_qty else 0
         top       = results[0]
 
-        cards = tk.Frame(self.revenue_frame, bg=CONTENT)
+        cards = tk.Frame(self.revenue_frame, bg=CONTENT, height=140)
         cards.pack(fill="x", pady=(0, 16))
+        cards.pack_propagate(False)
         self._make_card(cards, 0, "💰  TOTAL REVENUE",  f"₱{total_rev:,.2f}")
         self._make_card(cards, 1, "📦  ITEMS SOLD",     str(int(total_qty)))
         self._make_card(cards, 2, "📊  AVG PRICE",      f"₱{avg_price:,.2f}", 18)

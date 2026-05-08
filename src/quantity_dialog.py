@@ -1,5 +1,6 @@
 import tkinter as tk
 import os
+import sys
 try:
     from PIL import Image, ImageTk
     PIL_AVAILABLE = True
@@ -91,6 +92,16 @@ IMAGE_MAP = {
     "Nata De Coco": "Nata.png",
 }
 ASSETS_DIR = os.path.join(os.path.dirname(__file__), "..", "assets", "food @chizzlin")
+
+# Handle PyInstaller bundled resources
+if getattr(sys, 'frozen', False):
+    if hasattr(sys, '_MEIPASS'):
+        ASSETS_DIR = os.path.join(sys._MEIPASS, "assets", "food @chizzlin")
+    else:
+        application_path = os.path.dirname(sys.executable)
+        ASSETS_DIR = os.path.join(application_path, "assets", "food @chizzlin")
+else:
+    ASSETS_DIR = os.path.join(os.path.dirname(__file__), "..", "assets", "food @chizzlin")
 
 
 class QuantityDialog:

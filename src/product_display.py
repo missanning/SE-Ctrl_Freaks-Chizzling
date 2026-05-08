@@ -1,5 +1,6 @@
 import tkinter as tk
 import os
+import sys
 import threading
 from quantity_dialog import QuantityDialog
 try:
@@ -94,6 +95,20 @@ IMAGE_MAP = {
     "Nata De Coco": "Nata.png",
 }
 ASSETS_DIR = os.path.join(os.path.dirname(__file__), "..", "assets", "food @chizzlin")
+
+# Handle PyInstaller bundled resources
+if getattr(sys, 'frozen', False):
+    # Running as compiled executable
+    if hasattr(sys, '_MEIPASS'):
+        # PyInstaller temp folder
+        ASSETS_DIR = os.path.join(sys._MEIPASS, "assets", "food @chizzlin")
+    else:
+        # Fallback
+        application_path = os.path.dirname(sys.executable)
+        ASSETS_DIR = os.path.join(application_path, "assets", "food @chizzlin")
+else:
+    # Running as script
+    ASSETS_DIR = os.path.join(os.path.dirname(__file__), "..", "assets", "food @chizzlin")
 
 
 def _get_image_filename(name):
