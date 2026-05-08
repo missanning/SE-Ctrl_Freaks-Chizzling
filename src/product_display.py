@@ -153,6 +153,33 @@ class ProductDisplay:
     def _store_photo(self, pil_img, key):
         """Called on main thread to safely create PhotoImage."""
         self._img_cache[key] = ImageTk.PhotoImage(pil_img)
+    
+    def _load_image_async(self, label, key, img_path):
+        """Load image asynchronously if not in cache."""
+        if key in self._img_cache:
+            photo = self._img_cache[key]
+            if photo:
+                label.config(image=photo, text="")
+                label.image = photo
+            return
+        
+        try:
+            pil_img = Image.open(img_path).convert("RGB")
+            iw, ih  = pil_img.size
+            scale   = max(CARD_IMG_W / iw, CARD_IMG_H / ih)
+            nw, nh  = int(iw * scale), int(ih * scale)
+            pil_img = pil_img.resize((nw, nh), Image.BILINEAR)
+            left    = (nw - CARD_IMG_W) // 2
+            top     = (nh - CARD_IMG_H) // 2
+            pil_img = pil_img.crop((left, top,
+                                    left + CARD_IMG_W,
+                                    top  + CARD_IMG_H))
+            photo   = ImageTk.PhotoImage(pil_img)
+            self._img_cache[key] = photo
+            label.config(image=photo, text="")
+            label.image = photo
+        except Exception:
+            label.config(text="🍴", font=(FONT_FAM, 36), fg=TEXT_MUTED)
 
     def create_product_panel(self):
         panel = tk.Frame(self.parent, bg=BG)
@@ -297,24 +324,10 @@ class ProductDisplay:
                     img_label.config(image=photo)
                     img_label.image = photo
                 else:
-                    # Not cached yet — load inline (fallback for first render)
-                    try:
-                        pil_img = Image.open(img_path).convert("RGB")
-                        iw, ih  = pil_img.size
-                        scale   = max(CARD_IMG_W / iw, CARD_IMG_H / ih)
-                        nw, nh  = int(iw * scale), int(ih * scale)
-                        pil_img = pil_img.resize((nw, nh), Image.BILINEAR)
-                        left    = (nw - CARD_IMG_W) // 2
-                        top     = (nh - CARD_IMG_H) // 2
-                        pil_img = pil_img.crop((left, top,
-                                                left + CARD_IMG_W,
-                                                top  + CARD_IMG_H))
-                        photo   = ImageTk.PhotoImage(pil_img)
-                        self._img_cache[key] = photo
-                        img_label.config(image=photo)
-                        img_label.image = photo
-                    except Exception:
-                        img_label.config(text="🍴", font=(FONT_FAM, 36), fg=TEXT_MUTED)
+                    # Show placeholder while loading
+                    img_label.config(text="⏳", font=(FONT_FAM, 36), fg=TEXT_MUTED)
+                    # Schedule image load
+                    self.parent.after(10, lambda lbl=img_label, k=key, p=img_path: self._load_image_async(lbl, k, p))
             else:
                 img_label.config(text="🍴", font=(FONT_FAM, 36), fg=TEXT_MUTED)
 

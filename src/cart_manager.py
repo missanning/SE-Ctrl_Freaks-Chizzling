@@ -66,7 +66,6 @@ class CartManager:
         summary = tk.Frame(right, bg=WHITE)
         summary.pack(fill="x", **pad)
         self.lbl_subtotal = self._summary_row(summary, "Subtotal", "₱0.00")
-        self.lbl_disc     = self._summary_row(summary, "Discount", "-₱0.00", val_fg=GREEN)
 
         tk.Frame(right, bg=BORDER, height=1).pack(fill="x", pady=6)
         total_row = tk.Frame(right, bg=WHITE)
@@ -210,7 +209,6 @@ class CartManager:
         subtotal = sum(i["price"] * i["qty"] for i in self.cart)
         total    = subtotal
         self.lbl_subtotal.config(text=f"₱{subtotal:,.2f}")
-        self.lbl_disc.config(text="-₱0.00")
         self.lbl_total.config(text=f"₱{total:,.2f}")
         self._total = total
         self._update_change()

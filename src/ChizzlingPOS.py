@@ -95,9 +95,42 @@ class ChizzlingPOS:
 
         self.products = cur.fetchall()
         conn.close()
-        # Preload images in background before rendering
-        self.product_display.preload_images([p[1] for p in self.products])
+        
+        # Preload ALL images synchronously before displaying
+        product_names = [p[1] for p in self.products]
+        self._preload_all_images_sync(product_names)
+        
         self.product_display.display_products(self.products)
+    
+    def _preload_all_images_sync(self, product_names):
+        """Preload all images synchronously (blocks UI but ensures all images ready)."""
+        from product_display import _get_image_filename, ASSETS_DIR, CARD_IMG_W, CARD_IMG_H, PIL_AVAILABLE
+        if not PIL_AVAILABLE:
+            return
+        
+        from PIL import Image, ImageTk
+        for name in product_names:
+            filename = _get_image_filename(name)
+            path = os.path.join(ASSETS_DIR, filename)
+            key = (path, CARD_IMG_W, CARD_IMG_H)
+            
+            if key in self.product_display._img_cache:
+                continue
+            
+            try:
+                pil_img = Image.open(path).convert("RGB")
+                iw, ih = pil_img.size
+                scale = max(CARD_IMG_W / iw, CARD_IMG_H / ih)
+                nw, nh = int(iw * scale), int(ih * scale)
+                pil_img = pil_img.resize((nw, nh), Image.BILINEAR)
+                left = (nw - CARD_IMG_W) // 2
+                top = (nh - CARD_IMG_H) // 2
+                pil_img = pil_img.crop((left, top, left + CARD_IMG_W, top + CARD_IMG_H))
+                photo = ImageTk.PhotoImage(pil_img)
+                self.product_display._img_cache[key] = photo
+            except Exception as e:
+                print(f"Failed to load {name}: {e}")
+                self.product_display._img_cache[key] = None
 
     def add_to_cart(self, product):
         pid, name, price, *_ = product
