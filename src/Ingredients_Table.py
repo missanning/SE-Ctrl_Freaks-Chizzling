@@ -278,7 +278,14 @@ class IngredientsTableWindow:
         AddIngredientWindow(tk.Toplevel(self.root), self)
 
     def OpenEditProductWindow(self):
-        EditIngredientWindow(tk.Toplevel(self.root), self)
+        selected = self.tree.selection()
+        if not selected:
+            messagebox.showwarning("No Selection", "Please select an ingredient from the table to edit.", parent=self.root)
+            return
+        
+        item = self.tree.item(selected[0])
+        ingredient_id = item['values'][0]
+        EditIngredientWindow(tk.Toplevel(self.root), self, ingredient_id)
 
     def OpenArchiveFeature(self):
         if ARCHIVE2_AVAILABLE:
@@ -361,9 +368,10 @@ class AddIngredientWindow:
 # ── Edit Ingredient Window ──────────────────────────────────────
 
 class EditIngredientWindow:
-    def __init__(self, root, main_app):
+    def __init__(self, root, main_app, ingredient_id):
         self.root = root
         self.main_app = main_app
+        self.ingredient_id = ingredient_id
         self.root.title("Edit Ingredient")
         self.root.resizable(False, False)
         self.root.configure(bg=BG)
@@ -371,7 +379,7 @@ class EditIngredientWindow:
         self.root.after(100, self.root.focus_force)
         self.root.bind_all("<Button-1>", lambda e: e.widget.focus_set() if isinstance(e.widget, tk.Entry) else None)
 
-        w, h = 380, 440
+        w, h = 380, 450
         x = (root.winfo_screenwidth() // 2) - (w // 2)
         y = (root.winfo_screenheight() // 2) - (h // 2)
         self.root.geometry(f"{w}x{h}+{x}+{y}")
@@ -388,60 +396,59 @@ class EditIngredientWindow:
         form = tk.Frame(root, bg=BG, padx=30, pady=20)
         form.pack(fill="both", expand=True)
 
-        self.e_id    = entry_field(form, "Ingredient ID  (required)")
-        self.e_name  = entry_field(form, "New Name  (leave blank to keep)")
-        self.e_stock = entry_field(form, "New Stock  (leave blank to keep)")
-        self.e_unit  = entry_field(form, "New Unit  (leave blank to keep)")
-        self.e_threshold = entry_field(form, "New Threshold  (leave blank to keep)")
+        tk.Label(form, text=f"Ingredient ID: {ingredient_id}", font=FONT_LABEL,
+                 bg=BG, fg=BROWN, anchor="w").pack(fill="x", pady=(0, 8))
+
+        self.e_name  = entry_field(form, "Ingredient Name")
+        self.e_stock = entry_field(form, "Stock")
+        self.e_unit  = entry_field(form, "Unit  (grams / pcs / tsp / slices / ml)")
+        self.e_threshold = entry_field(form, "Low Stock Threshold")
 
         styled_button(form, "✎  Update Ingredient", self._update, width=22).pack(pady=(18, 0), fill="x")
+        
+        self._load_ingredient_data()
+
+    def _load_ingredient_data(self):
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT name, stock, unit, low_stock_threshold FROM ingredients WHERE id=?", (self.ingredient_id,))
+        result = cursor.fetchone()
+        conn.close()
+
+        if not result:
+            messagebox.showerror("Error", f"Ingredient with ID {self.ingredient_id} not found.", parent=self.root)
+            self.root.destroy()
+            return
+
+        cur_name, cur_stock, cur_unit, cur_threshold = result
+        
+        self.e_name.insert(0, cur_name)
+        self.e_stock.insert(0, cur_stock)
+        self.e_unit.insert(0, cur_unit)
+        self.e_threshold.insert(0, cur_threshold if cur_threshold else "0")
 
     def _update(self):
-        id_val = self.e_id.get().strip()
         name   = self.e_name.get().strip()
         stock  = self.e_stock.get().strip()
         unit   = self.e_unit.get().strip()
         threshold = self.e_threshold.get().strip()
 
-        if not id_val:
-            messagebox.showerror("Error", "Ingredient ID is required.", parent=self.root)
+        if not all([name, stock, unit, threshold]):
+            messagebox.showerror("Error", "All fields are required.", parent=self.root)
+            return
+
+        try:
+            stock = float(stock)
+            threshold = float(threshold)
+        except ValueError:
+            messagebox.showerror("Error", "Stock and threshold must be valid numbers.", parent=self.root)
             return
 
         conn = connect_db()
         cursor = conn.cursor()
-        cursor.execute("SELECT name, stock, unit, low_stock_threshold FROM ingredients WHERE id=?", (id_val,))
-        result = cursor.fetchone()
-
-        if not result:
-            messagebox.showerror("Not Found", f"No ingredient with ID {id_val}.", parent=self.root)
-            conn.close()
-            return
-
-        cur_name, cur_stock, cur_unit, cur_threshold = result
-        name = name or cur_name
-        unit = unit or cur_unit
-        threshold = threshold or cur_threshold
-
-        if stock:
-            try:
-                stock = float(stock)
-            except ValueError:
-                messagebox.showerror("Error", "Stock must be a number.", parent=self.root)
-                conn.close()
-                return
-        else:
-            stock = cur_stock
-        
-        try:
-            threshold = float(threshold)
-        except ValueError:
-            messagebox.showerror("Error", "Threshold must be a number.", parent=self.root)
-            conn.close()
-            return
-
         cursor.execute(
             "UPDATE ingredients SET name=?, stock=?, unit=?, low_stock_threshold=? WHERE id=?",
-            (name, stock, unit, threshold, id_val)
+            (name, stock, unit, threshold, self.ingredient_id)
         )
         conn.commit()
         conn.close()
