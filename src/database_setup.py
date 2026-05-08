@@ -140,7 +140,7 @@ def create_tables():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         product_name TEXT,
         ingredient_name TEXT,
-        quantity REAL,
+        quantity TEXT,
         unit TEXT
     )
     """)
