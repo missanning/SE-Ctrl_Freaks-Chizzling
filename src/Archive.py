@@ -141,6 +141,23 @@ class ArchiveFeature:
                       self.unarchive_products,
                       bg=ACCENT, fg=BROWN).pack(fill="x", pady=4)
 
+        tk.Frame(parent, bg=YELLOW, height=2).pack(fill="x", pady=10)
+
+        tk.Label(parent, text="Delete by ID or Name",
+                 font=FONT_SMALL, bg=BG, fg=SUBTLE).pack(anchor="w")
+
+        del_border = tk.Frame(parent, bg=ENTRY_BORDER, padx=1, pady=1)
+        del_border.pack(fill="x", pady=(2, 6))
+        self.delete_entry = tk.Entry(del_border, font=FONT_ENTRY,
+                                     bg=ENTRY_BG, fg=FG, relief="flat", bd=0)
+        self.delete_entry.pack(fill="x", ipady=6, padx=4)
+        self.delete_entry.bind("<FocusIn>",  lambda e: del_border.config(bg=ACCENT))
+        self.delete_entry.bind("<FocusOut>", lambda e: del_border.config(bg=ENTRY_BORDER))
+
+        styled_button(parent, "🗑  Delete Permanently",
+                      self.delete_product,
+                      bg="#c0392b", fg=YELLOW).pack(fill="x", pady=4)
+
     def load_products(self):
         conn = connect_db()
         cursor = conn.cursor()
@@ -206,4 +223,32 @@ class ArchiveFeature:
 
         self.unarchive_entry.delete(0, tk.END)
         messagebox.showinfo("Unarchived", "Product unarchived successfully.")
+        self.load_products()
+
+    def delete_product(self):
+        keyword = self.delete_entry.get().strip()
+        if not keyword:
+            messagebox.showwarning("Delete", "Enter a product ID or name.")
+            return
+
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM product_archive WHERE id=? OR name=?", (keyword, keyword))
+        result = cursor.fetchone()
+
+        if not result:
+            messagebox.showerror("Not Found", "Product not found in archive.")
+            conn.close()
+            return
+
+        if not messagebox.askyesno("Confirm Delete", f"Permanently delete '{result[1]}'?\n\nThis action cannot be undone!"):
+            conn.close()
+            return
+
+        cursor.execute("DELETE FROM product_archive WHERE id=? OR name=?", (keyword, keyword))
+        conn.commit()
+        conn.close()
+
+        self.delete_entry.delete(0, tk.END)
+        messagebox.showinfo("Deleted", "Product deleted permanently.")
         self.load_products()
