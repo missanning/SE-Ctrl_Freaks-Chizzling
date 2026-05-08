@@ -1,5 +1,6 @@
 import sqlite3
 import os
+from security import hash_password, is_hashed
 
 def connect_db():
     db_path = os.path.join(os.path.dirname(__file__), "sales_inventory.db")
@@ -27,7 +28,8 @@ def create_tables():
         name TEXT UNIQUE,
         price REAL,
         stock INTEGER,
-        category TEXT
+        category TEXT,
+        low_stock_threshold INTEGER DEFAULT 30
     )
     """)
 
@@ -41,6 +43,9 @@ def create_tables():
 
     if "stock" not in columns:
         cursor.execute("ALTER TABLE products ADD COLUMN stock INTEGER DEFAULT 0")
+    
+    if "low_stock_threshold" not in columns:
+        cursor.execute("ALTER TABLE products ADD COLUMN low_stock_threshold INTEGER DEFAULT 30")
 
     # PRODUCT ARCHIVE TABLE
     cursor.execute("""
@@ -118,9 +123,16 @@ def create_tables():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT UNIQUE,
         stock REAL,
-        unit TEXT
+        unit TEXT,
+        low_stock_threshold REAL DEFAULT 0
     )
     """)
+    
+    # Add threshold column if missing
+    cursor.execute("PRAGMA table_info(ingredients)")
+    ing_columns = [row[1] for row in cursor.fetchall()]
+    if "low_stock_threshold" not in ing_columns:
+        cursor.execute("ALTER TABLE ingredients ADD COLUMN low_stock_threshold REAL DEFAULT 0")
 
     # RECIPE TABLE (ingredient usage per product)
     cursor.execute("""
@@ -137,15 +149,31 @@ def create_tables():
     conn.close()
 
 
+def migrate_plain_passwords():
+    """Hash any existing plain-text passwords in the users table."""
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, password FROM users")
+    rows = cursor.fetchall()
+    for uid, pwd in rows:
+        if not is_hashed(pwd):
+            cursor.execute(
+                "UPDATE users SET password=? WHERE id=?",
+                (hash_password(pwd), uid)
+            )
+    conn.commit()
+    conn.close()
+
+
 def insert_default_data():
     conn = connect_db()
     cursor = conn.cursor()
 
     # DEFAULT USERS
     users = [
-        ("cashier", "1234", "cashier"),
-        ("inventory_staff", "1234", "inventory_staff"),
-        ("admin", "1234", "admin")
+        ("cashier", hash_password("1234"), "cashier"),
+        ("inventory_staff", hash_password("1234"), "inventory_staff"),
+        ("admin", hash_password("1234"), "admin")
     ]
 
     cursor.executemany(
@@ -437,4 +465,5 @@ def prompt_success():
 if __name__ == "__main__":
     create_tables()
     insert_default_data()
+    migrate_plain_passwords()
     prompt_success()

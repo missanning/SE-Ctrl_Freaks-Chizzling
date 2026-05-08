@@ -11,6 +11,7 @@ import shutil
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from database_setup import create_tables, insert_default_data, connect_db
+from security import verify_password
 
 @pytest.fixture
 def temp_db():
@@ -233,17 +234,23 @@ class TestDefaultDataInsertion:
         # Verify default users exist
         cursor.execute("SELECT username, password, role FROM users ORDER BY username")
         users = cursor.fetchall()
-        
+
         expected_users = [
-            ('admin', '1234', 'admin'),
-            ('cashier', '1234', 'cashier'),
-            ('inventory_staff', '1234', 'inventory_staff')
+            ('admin',           'admin'),
+            ('cashier',         'cashier'),
+            ('inventory_staff', 'inventory_staff')
         ]
-        
+
         assert len(users) == 3, f"Expected 3 default users, got {len(users)}"
-        
-        for expected_user in expected_users:
-            assert expected_user in users, f"Default user {expected_user[0]} not found or incorrect"
+
+        user_dict = {u[0]: (u[1], u[2]) for u in users}
+        for username, role in expected_users:
+            assert username in user_dict, f"Default user '{username}' not found"
+            stored_pw, stored_role = user_dict[username]
+            assert verify_password('1234', stored_pw), \
+                f"Password for '{username}' does not verify correctly"
+            assert stored_role == role, \
+                f"Role for '{username}' incorrect: expected {role}, got {stored_role}"
         
         # Restore original function
         database_setup.connect_db = original_connect

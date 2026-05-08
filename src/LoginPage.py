@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import messagebox
 from database_setup import connect_db
+from security import verify_password, is_hashed, hash_password
 import os
 import sys
 import platform
@@ -231,12 +232,25 @@ class MainApp:
 
         con = connect_db()
         cur = con.cursor()
-        cur.execute("SELECT role FROM users WHERE username=? AND password=?",
-                    (username, password))
+        cur.execute("SELECT role, password FROM users WHERE username=?", (username,))
         result = cur.fetchone()
         con.close()
 
         if result is None:
+            self._show_error("Invalid username or password.")
+            self.entry_username.config(highlightbackground="#e74c3c",
+                                       highlightcolor="#e74c3c", highlightthickness=2)
+            self.entry_password.config(highlightbackground="#e74c3c",
+                                       highlightcolor="#e74c3c", highlightthickness=2)
+            self._shake()
+            return
+
+        role, stored_pw = result
+
+        # Support both hashed and legacy plain-text passwords
+        pw_valid = verify_password(password, stored_pw) if is_hashed(stored_pw) else password == stored_pw
+
+        if not pw_valid:
             self._show_error("Invalid username or password.")
             self.entry_username.config(highlightbackground="#e74c3c",
                                        highlightcolor="#e74c3c", highlightthickness=2)

@@ -95,6 +95,8 @@ class ChizzlingPOS:
 
         self.products = cur.fetchall()
         conn.close()
+        # Preload images in background before rendering
+        self.product_display.preload_images([p[1] for p in self.products])
         self.product_display.display_products(self.products)
 
     def add_to_cart(self, product):

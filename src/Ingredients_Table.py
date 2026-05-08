@@ -51,8 +51,14 @@ class IngredientsTableWindow:
     def __init__(self, root):
         self.root = root
         self.root.title("Chizzling — Ingredients Table")
-        self.root.state("zoomed")
         self.root.configure(bg=BG)
+        
+        # Center and size window
+        w, h = 1000, 650
+        x = (root.winfo_screenwidth() // 2) - (w // 2)
+        y = (root.winfo_screenheight() // 2) - (h // 2)
+        self.root.geometry(f"{w}x{h}+{x}+{y}")
+        self.root.resizable(False, False)
 
         # Low stock thresholds
         self.low_limits = {
@@ -63,11 +69,8 @@ class IngredientsTableWindow:
         self._build_ui()
         self.load_products()
         self.root.after(100, self.root.focus_force)
-        self.root.bind_all("<Button-1>", self._fix_focus, add="+")
 
-    def _fix_focus(self, event):
-        if isinstance(event.widget, tk.Entry):
-            event.widget.focus_set()
+
 
     # ── UI Layout ───────────────────────────────────────────────
 
@@ -87,16 +90,16 @@ class IngredientsTableWindow:
         body = tk.Frame(self.root, bg=BG)
         body.pack(fill="both", expand=True, padx=20, pady=16)
 
-        # Left — table
-        left = tk.Frame(body, bg=BG)
-        left.pack(side="left", fill="both", expand=True)
-        self._build_table(left)
-
-        # Right — controls
+        # Right — controls (pack first to maintain position)
         right = tk.Frame(body, bg=BG, width=220)
         right.pack(side="right", fill="y", padx=(16, 0))
         right.pack_propagate(False)
         self._build_controls(right)
+
+        # Left — table
+        left = tk.Frame(body, bg=BG)
+        left.pack(side="left", fill="both", expand=True)
+        self._build_table(left)
 
         # Bottom strip
         tk.Frame(self.root, bg=YELLOW, height=4).pack(fill="x", side="bottom")
@@ -191,19 +194,19 @@ class IngredientsTableWindow:
         conn.close()
 
         self.tree.delete(*self.tree.get_children())
-        self.tree["columns"] = col_names
-        self.tree["show"] = "headings"
-
-        for col in col_names:
-            self.tree.heading(col, text=col.capitalize())
-            self.tree.column(col, width=120, anchor="center")
+        
+        if not self.tree["columns"]:
+            self.tree["columns"] = col_names
+            self.tree["show"] = "headings"
+            for col in col_names:
+                self.tree.heading(col, text=col.capitalize())
+                self.tree.column(col, width=120, anchor="center", minwidth=120)
 
         low_items = []
         for row in rows:
             stock = row[2]
-            unit  = row[3] if len(row) > 3 else ""
-            limit = self.low_limits.get(unit, None)
-            if limit is not None and stock <= limit:
+            threshold = row[4] if len(row) > 4 else 0
+            if threshold > 0 and stock <= threshold:
                 self.tree.insert("", tk.END, values=row, tags=("low",))
                 low_items.append(row[1])
             else:
@@ -212,8 +215,14 @@ class IngredientsTableWindow:
         self.tree.tag_configure("low", background="#ffe0e0", foreground="#c0392b")
 
         if low_items:
-            messagebox.showwarning("Low Stock Alert",
-                                   "Low stock items:\n• " + "\n• ".join(low_items))
+            self.root.after(100, lambda: self._show_low_stock_alert(low_items))
+
+    def _show_low_stock_alert(self, low_items):
+        messagebox.showwarning("Low Stock Alert",
+                               "Low stock items:\n• " + "\n• ".join(low_items),
+                               parent=self.root)
+        self.root.lift()
+        self.root.focus_force()
 
     def search_product(self):
         keyword = self.search_var.get()
@@ -232,7 +241,7 @@ class IngredientsTableWindow:
     def archive_products(self):
         keyword = self.archive_entry.get().strip()
         if not keyword:
-            messagebox.showwarning("Archive", "Enter an ingredient ID or name.")
+            messagebox.showwarning("Archive", "Enter an ingredient ID or name.", parent=self.root)
             return
 
         conn = connect_db()
@@ -241,11 +250,11 @@ class IngredientsTableWindow:
         result = cursor.fetchone()
 
         if not result:
-            messagebox.showerror("Not Found", "Ingredient not found.")
+            messagebox.showerror("Not Found", "Ingredient not found.", parent=self.root)
             conn.close()
             return
 
-        if not messagebox.askyesno("Confirm Archive", f"Archive '{result[1]}'?"):
+        if not messagebox.askyesno("Confirm Archive", f"Archive '{result[1]}'?", parent=self.root):
             conn.close()
             return
 
@@ -258,8 +267,10 @@ class IngredientsTableWindow:
         conn.close()
 
         self.archive_entry.delete(0, tk.END)
-        messagebox.showinfo("Archived", "Ingredient archived successfully.")
+        messagebox.showinfo("Archived", "Ingredient archived successfully.", parent=self.root)
         self.load_products()
+        self.root.lift()
+        self.root.focus_force()
 
     # ── Navigation ──────────────────────────────────────────────
 
@@ -267,13 +278,20 @@ class IngredientsTableWindow:
         AddIngredientWindow(tk.Toplevel(self.root), self)
 
     def OpenEditProductWindow(self):
-        EditIngredientWindow(tk.Toplevel(self.root), self)
+        selected = self.tree.selection()
+        if not selected:
+            messagebox.showwarning("No Selection", "Please select an ingredient from the table to edit.", parent=self.root)
+            return
+        
+        item = self.tree.item(selected[0])
+        ingredient_id = item['values'][0]
+        EditIngredientWindow(tk.Toplevel(self.root), self, ingredient_id)
 
     def OpenArchiveFeature(self):
         if ARCHIVE2_AVAILABLE:
             ArchiveFeature2(tk.Toplevel(self.root))
         else:
-            messagebox.showwarning("Unavailable", "Archive2 module not found.")
+            messagebox.showwarning("Unavailable", "Archive2 module not found.", parent=self.root)
 
 
 # ── Add Ingredient Window ───────────────────────────────────────
@@ -309,6 +327,7 @@ class AddIngredientWindow:
         self.e_name  = entry_field(form, "Ingredient Name")
         self.e_stock = entry_field(form, "Stock")
         self.e_unit  = entry_field(form, "Unit  (grams / pcs / tsp / slices / ml)")
+        self.e_threshold = entry_field(form, "Low Stock Threshold")
 
         styled_button(form, "＋  Add Ingredient", self._add, width=22).pack(pady=(18, 0), fill="x")
 
@@ -316,25 +335,32 @@ class AddIngredientWindow:
         name  = self.e_name.get().strip()
         stock = self.e_stock.get().strip()
         unit  = self.e_unit.get().strip()
+        threshold = self.e_threshold.get().strip() or "0"
 
         if not all([name, stock, unit]):
-            messagebox.showerror("Error", "Please fill in all fields.")
+            messagebox.showerror("Error", "Please fill in all fields.", parent=self.root)
+            return
+        
+        try:
+            threshold = float(threshold)
+        except ValueError:
+            messagebox.showerror("Error", "Threshold must be a number.", parent=self.root)
             return
 
         conn = connect_db()
         cursor = conn.cursor()
         cursor.execute("SELECT id FROM ingredients WHERE name=?", (name,))
         if cursor.fetchone():
-            messagebox.showerror("Error", f"'{name}' already exists.")
+            messagebox.showerror("Error", f"'{name}' already exists.", parent=self.root)
             conn.close()
             return
 
-        cursor.execute("INSERT INTO ingredients (name, stock, unit) VALUES (?, ?, ?)",
-                       (name, stock, unit))
+        cursor.execute("INSERT INTO ingredients (name, stock, unit, low_stock_threshold) VALUES (?, ?, ?, ?)",
+                       (name, stock, unit, threshold))
         conn.commit()
         conn.close()
 
-        messagebox.showinfo("Success", "Ingredient added successfully.")
+        messagebox.showinfo("Success", "Ingredient added successfully.", parent=self.root)
         self.main_app.load_products()
         self.root.destroy()
 
@@ -342,9 +368,10 @@ class AddIngredientWindow:
 # ── Edit Ingredient Window ──────────────────────────────────────
 
 class EditIngredientWindow:
-    def __init__(self, root, main_app):
+    def __init__(self, root, main_app, ingredient_id):
         self.root = root
         self.main_app = main_app
+        self.ingredient_id = ingredient_id
         self.root.title("Edit Ingredient")
         self.root.resizable(False, False)
         self.root.configure(bg=BG)
@@ -352,7 +379,7 @@ class EditIngredientWindow:
         self.root.after(100, self.root.focus_force)
         self.root.bind_all("<Button-1>", lambda e: e.widget.focus_set() if isinstance(e.widget, tk.Entry) else None)
 
-        w, h = 380, 440
+        w, h = 380, 450
         x = (root.winfo_screenwidth() // 2) - (w // 2)
         y = (root.winfo_screenheight() // 2) - (h // 2)
         self.root.geometry(f"{w}x{h}+{x}+{y}")
@@ -369,55 +396,64 @@ class EditIngredientWindow:
         form = tk.Frame(root, bg=BG, padx=30, pady=20)
         form.pack(fill="both", expand=True)
 
-        self.e_id    = entry_field(form, "Ingredient ID  (required)")
-        self.e_name  = entry_field(form, "New Name  (leave blank to keep)")
-        self.e_stock = entry_field(form, "New Stock  (leave blank to keep)")
-        self.e_unit  = entry_field(form, "New Unit  (leave blank to keep)")
+        tk.Label(form, text=f"Ingredient ID: {ingredient_id}", font=FONT_LABEL,
+                 bg=BG, fg=BROWN, anchor="w").pack(fill="x", pady=(0, 8))
+
+        self.e_name  = entry_field(form, "Ingredient Name")
+        self.e_stock = entry_field(form, "Stock")
+        self.e_unit  = entry_field(form, "Unit  (grams / pcs / tsp / slices / ml)")
+        self.e_threshold = entry_field(form, "Low Stock Threshold")
 
         styled_button(form, "✎  Update Ingredient", self._update, width=22).pack(pady=(18, 0), fill="x")
+        
+        self._load_ingredient_data()
+
+    def _load_ingredient_data(self):
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT name, stock, unit, low_stock_threshold FROM ingredients WHERE id=?", (self.ingredient_id,))
+        result = cursor.fetchone()
+        conn.close()
+
+        if not result:
+            messagebox.showerror("Error", f"Ingredient with ID {self.ingredient_id} not found.", parent=self.root)
+            self.root.destroy()
+            return
+
+        cur_name, cur_stock, cur_unit, cur_threshold = result
+        
+        self.e_name.insert(0, cur_name)
+        self.e_stock.insert(0, cur_stock)
+        self.e_unit.insert(0, cur_unit)
+        self.e_threshold.insert(0, cur_threshold if cur_threshold else "0")
 
     def _update(self):
-        id_val = self.e_id.get().strip()
         name   = self.e_name.get().strip()
         stock  = self.e_stock.get().strip()
         unit   = self.e_unit.get().strip()
+        threshold = self.e_threshold.get().strip()
 
-        if not id_val:
-            messagebox.showerror("Error", "Ingredient ID is required.")
+        if not all([name, stock, unit, threshold]):
+            messagebox.showerror("Error", "All fields are required.", parent=self.root)
+            return
+
+        try:
+            stock = float(stock)
+            threshold = float(threshold)
+        except ValueError:
+            messagebox.showerror("Error", "Stock and threshold must be valid numbers.", parent=self.root)
             return
 
         conn = connect_db()
         cursor = conn.cursor()
-        cursor.execute("SELECT name, stock, unit FROM ingredients WHERE id=?", (id_val,))
-        result = cursor.fetchone()
-
-        if not result:
-            messagebox.showerror("Not Found", f"No ingredient with ID {id_val}.")
-            conn.close()
-            return
-
-        cur_name, cur_stock, cur_unit = result
-        name = name or cur_name
-        unit = unit or cur_unit
-
-        if stock:
-            try:
-                stock = float(stock)
-            except ValueError:
-                messagebox.showerror("Error", "Stock must be a number.")
-                conn.close()
-                return
-        else:
-            stock = cur_stock
-
         cursor.execute(
-            "UPDATE ingredients SET name=?, stock=?, unit=? WHERE id=?",
-            (name, stock, unit, id_val)
+            "UPDATE ingredients SET name=?, stock=?, unit=?, low_stock_threshold=? WHERE id=?",
+            (name, stock, unit, threshold, self.ingredient_id)
         )
         conn.commit()
         conn.close()
 
-        messagebox.showinfo("Success", "Ingredient updated successfully.")
+        messagebox.showinfo("Success", "Ingredient updated successfully.", parent=self.root)
         self.main_app.load_products()
         self.root.destroy()
 
