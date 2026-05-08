@@ -5,6 +5,7 @@ import sys
 import subprocess
 from dashboard_views import DashboardViews
 import export_reports
+from backup_manager import BackupWindow, show_backup_reminder
 
 
 BG        = "#FFF8EE"
@@ -64,6 +65,7 @@ class Dashboard(DashboardViews):
             ("📤  Export Report",      self.open_export_dialog),
             ("🗂  Archive Sales",      self.open_sales_archive),
             ("👤  User Management",    self.open_user_management),
+            ("💾  Database Backup",    self.open_backup_manager),
         ]
         self._nav_buttons = []
         nav_frame = tk.Frame(sidebar, bg=SIDEBAR)
@@ -104,6 +106,8 @@ class Dashboard(DashboardViews):
         # Content area
         self.content_frame = tk.Frame(right, bg=CONTENT)
         self.content_frame.pack(fill="both", expand=True, padx=24, pady=20)
+       
+        self.root.after(1000, lambda: show_backup_reminder(self.root))
 
     def _nav_click(self, cmd, btn):
         if self._active_btn:
@@ -182,6 +186,9 @@ class Dashboard(DashboardViews):
         self._win_user_mgmt = tk.Toplevel(self.root)
         UserManagement(self._win_user_mgmt, on_close=self.open_user_management)
 
+    def open_backup_manager(self):
+        BackupWindow(self.root)
+
     def logout_and_redirect(self):
         try:
             self.root.destroy()
@@ -195,3 +202,4 @@ if __name__ == "__main__":
     root = tk.Tk()
     Dashboard(root)
     root.mainloop()
+
