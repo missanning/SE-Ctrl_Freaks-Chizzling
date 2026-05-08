@@ -134,10 +134,10 @@ class ProductManagementSystem:
         style.theme_use("clam")
         style.configure("Chizzling.Treeview",
                         background=ENTRY_BG, fieldbackground=ENTRY_BG,
-                        foreground=FG, font=FONT_ENTRY, rowheight=28)
+                        foreground=FG, font=("Segoe UI", 12), rowheight=36)
         style.configure("Chizzling.Treeview.Heading",
                         background=BROWN, foreground=YELLOW,
-                        font=FONT_LABEL, relief="flat")
+                        font=("Segoe UI", 12, "bold"), relief="flat")
         style.map("Chizzling.Treeview",
                   background=[("selected", ACCENT)],
                   foreground=[("selected", BROWN)])

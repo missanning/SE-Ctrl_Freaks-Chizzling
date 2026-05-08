@@ -151,7 +151,7 @@ class MainApp:
             self.entry_password.bind("<Button-1>", lambda e: self.entry_password.focus_set())
 
         self.show_password = False
-        tk.Button(pw_frame, text="👁", bg=ENTRY_BG, fg=SUBTLE,
+        tk.Button(pw_frame, text="👁️", bg=ENTRY_BG, fg=SUBTLE,
                   relief="flat", bd=0, cursor="hand2",
                   command=self._toggle_pw).pack(side=tk.RIGHT, padx=4)
 

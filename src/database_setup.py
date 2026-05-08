@@ -21,6 +21,18 @@ def create_tables():
     )
     """)
 
+    # DELETED USERS TABLE
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS deleted_users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        original_id INTEGER,
+        username TEXT,
+        password TEXT,
+        role TEXT,
+        deleted_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
     # PRODUCTS TABLE (MERGED: category + stock)
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS products (
@@ -460,7 +472,6 @@ def prompt_success():
     print("\n" + "="*50)
     print("DATABASE SETUP COMPLETED SUCCESSFULLY!")
     print("="*50)
-    print("\nDatabase Summary:")
 
 if __name__ == "__main__":
     create_tables()
