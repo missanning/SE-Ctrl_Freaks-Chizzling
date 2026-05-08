@@ -276,7 +276,7 @@ class ProductDisplay:
             row, col = divmod(idx, COLS)
 
             card = tk.Frame(self.prod_inner, bg=WHITE, cursor="hand2",
-                            highlightbackground=BORDER, highlightthickness=1)
+                            highlightbackground=BORDER, highlightthickness=2)
             card.grid(row=row, column=col, padx=6, pady=6, sticky="nsew")
             self.prod_inner.grid_columnconfigure(col, weight=1, uniform="col")
 
@@ -335,14 +335,17 @@ class ProductDisplay:
 
             all_widgets = [card, img_frame, img_label, info] + list(info.winfo_children())
             
-            # Track hover state to prevent rapid flickering
-            hover_state = {'active': False}
+            # Debounce hover events to prevent flickering during scroll
+            hover_job = {'id': None}
 
-            def _on_enter(e, c=card, ws=all_widgets, ab=add_btn, state=hover_state):
-                if state['active']:
-                    return
-                state['active'] = True
-                c.config(highlightbackground=PRIMARY, highlightthickness=2, bg=HOVER_BG)
+            def _on_enter(e, c=card, ws=all_widgets, ab=add_btn, job=hover_job):
+                if job['id']:
+                    c.after_cancel(job['id'])
+                job['id'] = c.after(50, lambda: _apply_hover(c, ws, ab, job))
+
+            def _apply_hover(c, ws, ab, job):
+                job['id'] = None
+                c.config(highlightbackground=PRIMARY, bg=HOVER_BG)
                 for w in ws:
                     try: w.config(bg=HOVER_BG)
                     except tk.TclError: pass
@@ -350,11 +353,11 @@ class ProductDisplay:
                 img_frame.config(bg=BG)
                 img_label.config(bg=BG)
 
-            def _on_leave(e, c=card, ws=all_widgets, ab=add_btn, state=hover_state):
-                if not state['active']:
-                    return
-                state['active'] = False
-                c.config(highlightbackground=BORDER, highlightthickness=1, bg=WHITE)
+            def _on_leave(e, c=card, ws=all_widgets, ab=add_btn, job=hover_job):
+                if job['id']:
+                    c.after_cancel(job['id'])
+                    job['id'] = None
+                c.config(highlightbackground=BORDER, bg=WHITE)
                 for w in ws:
                     try: w.config(bg=WHITE)
                     except tk.TclError: pass

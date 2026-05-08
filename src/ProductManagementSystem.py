@@ -4,6 +4,7 @@ import os
 from database_setup import connect_db
 from Ingredients_Table import IngredientsTableWindow
 from Archive import ArchiveFeature
+from backup_manager import BackupWindow
 
 # ── Color palette (matches LoginPage) ──────────────────────────
 BG         = "#ffffff"
@@ -184,6 +185,8 @@ class ProductManagementSystem:
 
         tk.Frame(parent, bg=YELLOW, height=2).pack(fill="x", pady=10)
 
+        tk.Frame(parent, bg=YELLOW, height=2).pack(fill="x", pady=10)
+
         styled_button(parent, "🧪  Manage Ingredients",
                       self.OpenIngredientsTableWindow,
                       bg=ACCENT, fg=BROWN).pack(fill="x", pady=4)
@@ -310,6 +313,14 @@ class ProductManagementSystem:
         window.destroy()
 
     def _logout(self):
+        from LoginPage import MainApp
+        self.root.destroy()
+        new_root = tk.Tk()
+        MainApp(new_root)
+        new_root.mainloop()
+
+    def OpenBackupWindow(self):
+        BackupWindow(self.root)
         from LoginPage import MainApp
         self.root.destroy()
         new_root = tk.Tk()
