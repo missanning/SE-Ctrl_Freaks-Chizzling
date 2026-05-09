@@ -1,0 +1,73 @@
+name: Enforce Naming Convention
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+    types: [opened, edited, synchronize]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  governance-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate PR Semantic Title
+        if: github.event_name == 'pull_request'
+        uses: amannn/action-semantic-pull-request@v5.4.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            chore
+            docs
+            style
+            refactor
+            test
+            merge
+          requireScope: false
+
+      - name: Validate Commit Messages
+        run: |
+          PATTERN="^(feat|fix|chore|docs|style|refactor|test|merge)(\(.+\))?: .+"
+          INVALID=0
+
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            COMMITS=$(git log --format="%s" ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }})
+          else
+            COMMITS=$(git log --format="%s" -1)
+          fi
+
+          echo "Checking commit messages..."
+
+          while IFS= read -r MSG; do
+            if [ -z "$MSG" ]; then
+              continue
+            fi
+
+            if ! echo "$MSG" | grep -qP "$PATTERN"; then
+              echo "::error::Invalid commit message: '$MSG'"
+              echo "Expected: type(scope): description (e.g. feat: add login page)"
+              INVALID=1
+            else
+              echo "Valid: $MSG"
+            fi
+          done <<< "$COMMITS"
+
+          if [ "$INVALID" -eq 1 ]; then
+            exit 1
+          fi

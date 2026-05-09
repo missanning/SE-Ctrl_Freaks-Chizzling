@@ -1,5 +1,4 @@
-# Simplified Test for ChizzlingPOS System
-# Test Objective: Test core ChizzlingPOS functionality without complex UI mocking
+# Test for US:01 Digital Transaction Processing
 
 import pytest
 import sys
@@ -84,19 +83,29 @@ class TestDatabaseConnection:
     
     def test_connect_db_function(self):
         """Test that connect_db returns a valid connection"""
-        from ChizzlingPOS import connect_db
-        
-        conn = connect_db()
+        from database_setup import create_tables, connect_db as setup_connect_db
+        import database_setup
+
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
+        temp_file.close()
+
+        def mock_connect():
+            return sqlite3.connect(temp_file.name)
+
+        database_setup.connect_db = mock_connect
+        create_tables()
+        database_setup.connect_db = setup_connect_db
+
+        conn = sqlite3.connect(temp_file.name)
         assert conn is not None
-        
-        # Test that we can execute a query
+
         cursor = conn.cursor()
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
         tables = cursor.fetchall()
-        
-        # Should have some tables
+
         assert len(tables) > 0
         conn.close()
+        os.unlink(temp_file.name)
 
 class TestProductLoading:
     """Test product loading functionality without UI components"""

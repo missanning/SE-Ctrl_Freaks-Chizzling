@@ -1,175 +1,290 @@
 import tkinter as tk
-from tkinter import messagebox
+from datetime import datetime
+
+WHITE      = "#FFFFFF"
+PRIMARY    = "#F5A623"
+PRIMARY_LT = "#FFF0D0"
+BG         = "#FFF8EE"
+TEXT_DARK  = "#3B1F0A"
+TEXT_MID   = "#7A4F1E"
+TEXT_MUTED = "#B07840"
+BORDER     = "#FFD966"
+RED        = "#FA5252"
+GREEN      = "#40C057"
+FONT_FAM   = "Segoe UI"
+FONT_TITLE = (FONT_FAM, 14, "bold")
+FONT_BOLD  = (FONT_FAM, 12, "bold")
+FONT_BODY  = (FONT_FAM, 12)
+FONT_SMALL = (FONT_FAM, 10)
+
 
 class CartManager:
     def __init__(self, parent, pos_instance):
         self.parent = parent
-        self.pos = pos_instance
-        self.cart = []
-        self.total = 0
-        self.create_cart_frame()
-    
-    def create_cart_frame(self):
-        """Create the checkout/cart frame"""
-        self.cart_frame = tk.Frame(self.parent, bg="#FFFFFF", bd=2, relief="raised")
-        self.cart_frame.grid(row=1, column=2, rowspan=7, padx=5, pady=10, sticky="ns")
-        self.cart_frame.grid_propagate(False)
-        self.cart_frame.configure(width=720, height=550)
+        self.pos    = pos_instance
+        self.cart   = []
+        self._total = 0
+        self.create_cart_panel()
 
-        # Configure grid
-        self.parent.grid_rowconfigure(1, weight=1)
-        self.parent.grid_columnconfigure(1, weight=1)
-        self.parent.grid_columnconfigure(2, weight=0)
+    def create_cart_panel(self):
+        right = tk.Frame(self.parent, bg=WHITE, width=380,
+                         highlightbackground=BORDER, highlightthickness=1)
+        right.pack(fill="both", expand=True)
+        right.pack_propagate(False)
+        self.right = right
+
+        pad = dict(padx=16)
 
         # Title
-        tk.Label(self.cart_frame, text="CHECKOUT LIST", font=("Arial", 10, "bold"),
-                bg="#FFFFFF").grid(row=0, column=0, columnspan=3, padx=100, pady=5, sticky="ew")
+        hdr = tk.Frame(right, bg=WHITE)
+        hdr.pack(fill="x", pady=(14, 6), **pad)
+        tk.Label(hdr, text="Order Details", font=FONT_TITLE,
+                 fg=TEXT_DARK, bg=WHITE).pack(side="left")
 
-        # Cart items container with scrollbar
-        canvas_container = tk.Frame(self.cart_frame, bg="#FFFFFF")
-        canvas_container.grid(row=1, column=0, columnspan=3, sticky="nsew", padx=10, pady=(0, 5))
-        
-        self.cart_canvas = tk.Canvas(canvas_container, bg="#FFFFFF", highlightthickness=0)
-        scrollbar = tk.Scrollbar(canvas_container, orient="vertical", command=self.cart_canvas.yview)
-        self.cart_items_frame = tk.Frame(self.cart_canvas, bg="#FFFFFF")
-        
-        self.cart_items_frame.bind(
-            "<Configure>",
-            lambda e: self.cart_canvas.configure(scrollregion=self.cart_canvas.bbox("all"))
-        )
-        
-        self.cart_canvas.create_window((0, 0), window=self.cart_items_frame, anchor="nw")
-        self.cart_canvas.configure(yscrollcommand=scrollbar.set)
-        
-        # Mouse wheel scrolling
-        def _on_mousewheel(event):
-            if self.cart_canvas.bbox("all"):
-                bbox = self.cart_canvas.bbox("all")
-                canvas_height = self.cart_canvas.winfo_height()
-                if bbox[3] > canvas_height:
-                    self.cart_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
-        
-        def _bind_mousewheel(event):
-            self.cart_canvas.bind_all("<MouseWheel>", _on_mousewheel)
-        
-        def _unbind_mousewheel(event):
-            self.cart_canvas.unbind_all("<MouseWheel>")
-        
-        self.cart_canvas.bind("<Enter>", _bind_mousewheel)
-        self.cart_canvas.bind("<Leave>", _unbind_mousewheel)
-        
+        # Cart scroll area
+        cart_outer = tk.Frame(right, bg=WHITE)
+        cart_outer.pack(fill="both", expand=True, **pad)
+
+        self.cart_canvas = tk.Canvas(cart_outer, bg=WHITE, highlightthickness=0)
+        cart_sb = tk.Scrollbar(cart_outer, orient="vertical", command=self.cart_canvas.yview)
+        self.cart_canvas.configure(yscrollcommand=cart_sb.set)
+        cart_sb.pack(side="right", fill="y")
         self.cart_canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
 
-        # Configure column weights
-        for col, weight in enumerate((4, 1, 1, 1, 2)):
-            self.cart_items_frame.grid_columnconfigure(col, weight=weight)
+        self.cart_inner = tk.Frame(self.cart_canvas, bg=WHITE)
+        self._cart_window = self.cart_canvas.create_window((0, 0), window=self.cart_inner, anchor="nw")
+        self.cart_inner.bind("<Configure>",
+                             lambda _: self.cart_canvas.configure(
+                                 scrollregion=self.cart_canvas.bbox("all")))
+        self.cart_canvas.bind("<Configure>",
+                              lambda e: self.cart_canvas.itemconfig(self._cart_window, width=e.width))
 
-        # Cart frame grid configuration
-        self.cart_frame.grid_rowconfigure(1, weight=1)
-        self.cart_frame.grid_columnconfigure(0, weight=1)
+        # Divider
+        tk.Frame(right, bg=BORDER, height=1).pack(fill="x", pady=8)
 
-        # Total label
-        self.total_label = tk.Label(self.cart_frame, text="Total: 0", bg="#FFFFFF", font=("Arial", 10, "bold"))
-        self.total_label.grid(row=2, column=0, columnspan=3, pady=(10, 5), sticky="w", padx=10)
+        # Summary rows
+        summary = tk.Frame(right, bg=WHITE)
+        summary.pack(fill="x", **pad)
+        self.lbl_subtotal = self._summary_row(summary, "Subtotal", "₱0.00")
 
-        # Payment section
-        tk.Label(self.cart_frame, text="Payment:", bg="#FFFFFF").grid(row=4, column=0, sticky="w", padx=10)
-        self.payment_entry = tk.Entry(self.cart_frame)
-        self.payment_entry.grid(row=4, column=1, columnspan=2, pady=5, sticky="ew", padx=10)
+        tk.Frame(right, bg=BORDER, height=1).pack(fill="x", pady=6)
+        total_row = tk.Frame(right, bg=WHITE)
+        total_row.pack(fill="x", **pad)
+        tk.Label(total_row, text="Total", font=(FONT_FAM, 14, "bold"),
+                 fg=TEXT_DARK, bg=WHITE).pack(side="left")
+        self.lbl_total = tk.Label(total_row, text="₱0.00",
+                                  font=(FONT_FAM, 14, "bold"), fg=TEXT_DARK, bg=WHITE)
+        self.lbl_total.pack(side="right")
 
-        # Confirm payment button
-        tk.Button(self.cart_frame, text="Confirm Payment", command=self.pos.confirm_payment,
-                  bg="#28A745", fg="white", activebackground="#3DC06B", activeforeground="white",
-                  relief="raised").grid(row=5, column=0, columnspan=3, pady=10, padx=10, sticky="ew")
-        
-        # Initialize with header only
-        self.update_cart()
-    
-    def add_item(self, product_id, name, price, qty):
-        """Add item to cart or update quantity if exists"""
-        # Check if product already in cart
-        for item in self.cart:
-            if item['id'] == product_id:
-                item['qty'] += qty
-                self.update_cart()
-                return
-        
-        # Add new product to cart
-        self.cart.append({'id': product_id, 'name': name, 'price': price, 'qty': qty})
-        self.update_cart()
-        self.update_total()
-    
-    def update_cart(self):
-        """Update the cart display"""
-        # Clear current items
-        for widget in self.cart_items_frame.winfo_children():
-            widget.destroy()
+        # Payment
+        pay_row = tk.Frame(right, bg=WHITE)
+        pay_row.pack(fill="x", padx=16, pady=(10, 4))
+        tk.Label(pay_row, text="Payment:", font=FONT_BOLD,
+                 fg=TEXT_DARK, bg=WHITE).pack(side="left")
+        self.payment_var = tk.StringVar()
+        self.payment_var.trace("w", lambda *_: (self._validate_payment_input(), self._clear_error()))
+        self.payment_entry = tk.Entry(pay_row, textvariable=self.payment_var,
+                                      font=FONT_BOLD, fg=TEXT_DARK,
+                                      relief="flat", bg=BG, width=12,
+                                      highlightthickness=1, highlightbackground=BORDER)
+        self.payment_entry.pack(side="right", ipady=5, padx=(6, 0))
 
-        # Header row
-        header_bg = "#FFFFFF"
-        tk.Label(self.cart_items_frame, text="Name", bg=header_bg, width=18).grid(row=0, column=0, sticky="w", padx=10)
-        tk.Label(self.cart_items_frame, text="", bg=header_bg, width=2).grid(row=0, column=1)
-        tk.Label(self.cart_items_frame, text="QTY", bg=header_bg, width=6).grid(row=0, column=2)
-        tk.Label(self.cart_items_frame, text="", bg=header_bg, width=2).grid(row=0, column=3)
-        tk.Label(self.cart_items_frame, text="PRICE", bg=header_bg, width=8).grid(row=0, column=4, sticky="e", padx=10)
+        # Inline error
+        self.error_lbl = tk.Label(right, text="", font=FONT_SMALL,
+                                  fg=RED, bg=WHITE, wraplength=340, justify="left")
+        self.error_lbl.pack(fill="x", padx=16)
 
-        # Cart items
-        for i, item in enumerate(self.cart):
-            row = i + 1
-            name = item['name']
-            qty = item['qty']
-            price = item['price'] * qty
+        # Change
+        change_row = tk.Frame(right, bg=WHITE)
+        change_row.pack(fill="x", padx=16, pady=(0, 8))
+        tk.Label(change_row, text="Change:", font=FONT_BOLD,
+                 fg=TEXT_DARK, bg=WHITE).pack(side="left")
+        self.lbl_change = tk.Label(change_row, text="₱0.00",
+                                   font=(FONT_FAM, 13, "bold"), fg=GREEN, bg=WHITE)
+        self.lbl_change.pack(side="right")
 
-            # Name
-            tk.Label(self.cart_items_frame, text=name, bg="#FFFFFF").grid(row=row, column=0, padx=(10,4), pady=2, sticky="w")
+        # Buttons
+        btn_row = tk.Frame(right, bg=WHITE)
+        btn_row.pack(fill="x", padx=16, pady=(0, 16))
+        tk.Button(btn_row, text="Cancel", command=self.cancel_order,
+                  bg=BORDER, fg=TEXT_DARK, relief="flat",
+                  font=FONT_BOLD, width=10, height=2).pack(side="left")
+        tk.Button(btn_row, text="Place Order", command=self.confirm_payment,
+                  bg=PRIMARY, fg=WHITE, relief="flat",
+                  font=FONT_BOLD, width=18, height=2).pack(side="right")
 
-            # Minus button
-            tk.Button(self.cart_items_frame, text="-", width=2,
-                    command=lambda x=i: self.change_qty(x,-1)).grid(row=row, column=1, padx=2, pady=2)
+        self._render_cart()
 
-            # Quantity
-            tk.Label(self.cart_items_frame, text=str(qty), width=6,
-                    bg="#FFFFFF").grid(row=row, column=2, padx=2, pady=2)
+    def _summary_row(self, parent, label, value, val_fg=TEXT_DARK):
+        row = tk.Frame(parent, bg=WHITE)
+        row.pack(fill="x", pady=2)
+        tk.Label(row, text=label, font=FONT_BODY, fg=TEXT_DARK, bg=WHITE).pack(side="left")
+        lbl = tk.Label(row, text=value, font=FONT_BODY, fg=val_fg, bg=WHITE)
+        lbl.pack(side="right")
+        return lbl
 
-            # Plus button
-            tk.Button(self.cart_items_frame, text="+", width=2,
-                    command=lambda x=i: self.change_qty(x,1)).grid(row=row, column=3, padx=2, pady=2)
+    def add_item(self, product_id, name, price, qty=1):
+        ex = next((i for i in self.cart if i["id"] == product_id), None)
+        if ex:
+            ex["qty"] += qty
+        else:
+            self.cart.append({"id": product_id, "name": name, "price": price, "qty": qty})
+        self._render_cart()
 
-            # Price
-            tk.Label(self.cart_items_frame, text=f"{price:.2f}", width=8, 
-                    bg="#FFFFFF").grid(row=row, column=4, padx=(4,10), pady=2, sticky="e")
-        
-        self.update_total()
-    
-    def change_qty(self, index, delta):
-        """Change quantity of item in cart"""
-        self.cart[index]['qty'] += delta
-
-        if self.cart[index]['qty'] <= 0:
-            self.cart.pop(index)
-
-        self.update_cart()
-    
-    def update_total(self):
-        """Update the total price display"""
-        self.total = sum(item['price'] * item['qty'] for item in self.cart)
-        self.total_label.config(text=f"Total: {self.total:.2f}")
-    
-    def clear_cart(self):
-        """Clear all items from cart"""
-        self.cart = []
-        self.update_cart()
-        if hasattr(self, 'payment_entry'):
-            self.payment_entry.delete(0, tk.END)
-    
-    def cancel_order(self):
-        """Cancel the current order"""
-        if not self.cart:
-            messagebox.showinfo("Info", "Cart is already empty")
+    def change_qty(self, pid, delta):
+        ex = next((i for i in self.cart if i["id"] == pid), None)
+        if not ex:
             return
-        
-        response = messagebox.askyesno("Cancel Order", "Are you sure you want to cancel all items in the cart?")
-        if response:
-            self.clear_cart()
-            messagebox.showinfo("Success", "All items have been removed from cart")
+        ex["qty"] += delta
+        if ex["qty"] <= 0:
+            self.cart = [i for i in self.cart if i["id"] != pid]
+        self._render_cart()
+
+    def remove_item(self, pid):
+        self.cart = [i for i in self.cart if i["id"] != pid]
+        self._render_cart()
+
+    def clear_cart(self):
+        self.cart = []
+        self.payment_var.set("")
+        self._render_cart()
+
+    def cancel_order(self):
+        if not self.cart:
+            self._show_error("No items in cart to cancel.")
+            return
+        self.clear_cart()
+
+    def _render_cart(self):
+        for w in self.cart_inner.winfo_children():
+            w.destroy()
+
+        if not self.cart:
+            tk.Label(self.cart_inner, text="Cart is empty",
+                     font=FONT_BODY, fg=TEXT_DARK, bg=WHITE).pack(pady=20)
+            self._update_summary()
+            return
+
+        for item in self.cart:
+            row = tk.Frame(self.cart_inner, bg=PRIMARY_LT,
+                           highlightbackground=BORDER, highlightthickness=1)
+            row.pack(fill="x", pady=3)
+
+            # Qty controls packed first to always show
+            ctrl = tk.Frame(row, bg=PRIMARY_LT)
+            ctrl.pack(side="right", padx=8)
+            minus = tk.Label(ctrl, text="−", font=(FONT_FAM, 15, "bold"),
+                             bg=PRIMARY_LT, fg=TEXT_DARK, width=2, cursor="hand2")
+            minus.pack(side="left", padx=1)
+            minus.bind("<Button-1>", lambda _, pid=item["id"]: self.change_qty(pid, -1))
+
+            tk.Label(ctrl, text=str(item["qty"]), font=FONT_BOLD,
+                     fg=TEXT_DARK, bg=PRIMARY_LT, width=2).pack(side="left", padx=2)
+
+            plus = tk.Label(ctrl, text="+", font=(FONT_FAM, 15, "bold"),
+                            bg=PRIMARY_LT, fg=TEXT_DARK, width=2, cursor="hand2")
+            plus.pack(side="left", padx=1)
+            plus.bind("<Button-1>", lambda _, pid=item["id"]: self.change_qty(pid, 1))
+
+            # Icon
+            tk.Label(row, text="🍴", font=(FONT_FAM, 18),
+                     bg=PRIMARY_LT, width=3).pack(side="left", padx=(6, 6), pady=6)
+
+            # Info
+            info = tk.Frame(row, bg=PRIMARY_LT)
+            info.pack(side="left", fill="x", expand=True, pady=4)
+            tk.Label(info, text=item["name"], font=FONT_BOLD,
+                     fg=TEXT_DARK, bg=PRIMARY_LT, anchor="w",
+                     wraplength=160, justify="left").pack(fill="x")
+            tk.Label(info, text=f"₱{item['price']:,.2f}", font=FONT_BODY,
+                     fg=TEXT_DARK, bg=PRIMARY_LT, anchor="w").pack(fill="x")
+            remove = tk.Label(info, text="Remove", font=FONT_SMALL,
+                              fg=RED, bg=PRIMARY_LT, cursor="hand2", anchor="w")
+            remove.pack(fill="x", pady=(0, 2))
+            remove.bind("<Button-1>", lambda _, pid=item["id"]: self.remove_item(pid))
+
+        self._update_summary()
+
+    def _update_summary(self):
+        subtotal = sum(i["price"] * i["qty"] for i in self.cart)
+        total    = subtotal
+        self.lbl_subtotal.config(text=f"₱{subtotal:,.2f}")
+        self.lbl_total.config(text=f"₱{total:,.2f}")
+        self._total = total
+        self._update_change()
+
+    def _validate_payment_input(self):
+        """Real-time validation: only allow digits and a single decimal point."""
+        raw = self.payment_var.get()
+        if not raw:
+            self._update_change()
+            return
+
+        # Check for letters
+        if any(c.isalpha() for c in raw):
+            self._show_error("Letters are not allowed. Enter numbers only.")
+            return
+
+        # Check for symbols other than digits and a single dot
+        allowed = set("0123456789.")
+        bad_chars = [c for c in raw if c not in allowed]
+        if bad_chars:
+            self._show_error(f"Invalid character '{bad_chars[0]}'. Numbers only.")
+            return
+
+        # More than one decimal point
+        if raw.count(".") > 1:
+            self._show_error("Only one decimal point is allowed.")
+            return
+
+        # Valid number — update change display
+        self._update_change()
+
+    def _update_change(self):
+        try:
+            pay = float(self.payment_var.get())
+        except ValueError:
+            self.lbl_change.config(text="₱0.00", fg=TEXT_MUTED)
+            return
+        change = pay - self._total
+        self.lbl_change.config(text=f"₱{change:,.2f}", fg=GREEN if change >= 0 else RED)
+
+    def _show_error(self, msg):
+        self.error_lbl.config(text=f"⚠ {msg}")
+        self.payment_entry.config(highlightbackground=RED, highlightcolor=RED)
+        self.right.after(3000, self._clear_error)
+
+    def _clear_error(self):
+        self.error_lbl.config(text="")
+        self.payment_entry.config(highlightbackground=BORDER, highlightcolor=BORDER)
+
+    def confirm_payment(self):
+        if not self.cart:
+            self._show_error("Cart is empty. Please add items first.")
+            return
+
+        raw = self.payment_var.get().strip()
+        if not raw:
+            self._show_error("Please enter a payment amount.")
+            return
+        if any(c.isalpha() for c in raw):
+            self._show_error("Letters are not allowed. Enter numbers only.")
+            return
+        allowed = set("0123456789.")
+        bad_chars = [c for c in raw if c not in allowed]
+        if bad_chars:
+            self._show_error(f"Invalid character '{bad_chars[0]}'. Numbers only.")
+            return
+        if raw.count(".") > 1:
+            self._show_error("Only one decimal point is allowed.")
+            return
+
+        payment = float(raw)
+        if payment <= 0:
+            self._show_error("Payment amount must be greater than zero.")
+            return
+        if payment < self._total:
+            self._show_error(f"Insufficient payment. Need ₱{self._total - payment:,.2f} more.")
+            return
+
+        self.pos.process_payment(self.cart, self._total, payment)
